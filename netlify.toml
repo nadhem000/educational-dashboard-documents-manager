@@ -10,11 +10,11 @@
   NODE_VERSION = "18"
 
 # ------------------------------------------------------------
-# Function settings
+# Per-function settings
 # ------------------------------------------------------------
-[functions]
-  # Long neural TTS generations can exceed the 10s free-tier default.
-  # 26s is the max on most paid plans; adjust to your plan.
+# `timeout` belongs to a specific function, not the [functions]
+# table. Add one block per function if you add more later.
+[functions."tts"]
   timeout = 26
 
 # ------------------------------------------------------------
@@ -53,7 +53,7 @@
 
 # Icons — immutable; bump filenames if you redesign them.
 [[headers]]
-  for = "/icons/*"
+  for = "/assets/icons/*"
   [headers.values]
     Cache-Control = "public, max-age=31536000, immutable"
 
