@@ -1,0 +1,83 @@
+TODO — Free Text → MP3
+======================
+
+Priority: HIGH (do before sharing the URL publicly)
+---------------------------------------------------
+
+[x] POST body instead of query string (long-text fix)
+[x] Chunked Google fallback (remove 200-char truncation)
+[ ] Server-side text cap
+      Reject > MAX_CHARS (suggest 5000) with 413.
+      Prevents Lambda memory blowup and quota abuse.
+[ ] Server-side voice validation
+      Check `voice` against the VOICES map. Unknown voice → 400, not a
+      silent Google fallback with a garbage language prefix.
+[ ] Raise Netlify function timeout
+      Free tier defaults to 10 s; long neural generations exceed it.
+      Dashboard → Functions → timeout, or [functions] timeout in netlify.toml.
+[ ] Rate limiting
+      Netlify Edge Function in front of /api/tts, or a Blobs counter keyed
+      by IP. ~20 lines. Without this, anyone with the URL drains your quota.
+
+Priority: MEDIUM (robustness / cost)
+------------------------------------
+
+[ ] Retry with backoff on Google chunks
+      One transient 429 currently kills the whole fallback chain.
+[ ] Cache generated audio
+      Hash voice+text → store MP3 in Netlify Blobs. Repeat requests become
+      instant and stop hitting upstream engines.
+[ ] Streaming response
+      Move to an Edge Function that streams Edge TTS audio directly.
+      Removes the base64 step and the ~6 MB response ceiling.
+[ ] ID3 tags
+      Write title (first line of text) and artist (voice name) so files
+      are identifiable in media players.
+[ ] Surface X-TTS-Source in the UI
+      Small "engine: edge / google" chip under the player.
+[ ] Progress feedback
+      Indeterminate bar for generation; SSE for a real percentage.
+
+Priority: LOW (features / polish)
+---------------------------------
+
+[ ] Speech rate / pitch / volume sliders
+      Edge TTS accepts rate / pitch / volume as percentages.
+[ ] Voice style dropdown
+      Some Edge voices expose styles (cheerful, sad, newscast, calm).
+      Show only for voices that advertise them.
+[ ] Keyboard shortcut
+      Ctrl/Cmd+Enter to generate.
+[ ] Copy / clear / paste buttons on the textarea.
+[ ] Preset sample texts per language (for testing voices).
+[ ] Word-boundary highlighting
+      Edge TTS emits word-boundary events — highlight the sentence being
+      spoken in sync with playback. Highest UX gain available.
+[ ] Multi-voice dialogue mode
+      Parse "Moi :" / "Pépé :" speaker turns and assign a different voice
+      per speaker, then concatenate.
+[ ] Subtitle export (SRT / VTT) from word-boundary events.
+[ ] SSML mode toggle for full prosody control.
+
+Parking lot
+-----------
+
+[ ] Swap in a paid TTS engine (Azure Speech / Google Cloud / ElevenLabs)
+      behind the same /api/tts contract if reliability becomes a
+      requirement. Removes the "unofficial API" risk entirely.
+[ ] Add tests for chunkText() boundary cases.
+[ ] Add .env.example with the expected variable names.
+
+Architecture
+------------
+[x] Split into Documents Manager / Voice Studio / TTS
+[ ] Extract shared hub CSS into dm.css once a 4th page appears
+[ ] Add a search/filter bar on Documents Manager when card count > ~8
+[ ] Consider a shared dm-header custom element to dedupe breadcrumbs
+
+[x] Voice Separator — 6-band filter, solo/mute, presets, WAV export per band
+[ ] Voice Separator: replace Web Audio biquad chain with Linkwitz-Riley
+      4th-order crossovers for cleaner band separation.
+[ ] Voice Separator: add stereo width / mid-side controls per band.
+[ ] Voice Separator: persist band settings in localStorage like TTS does.
+[ ] Voice Separator: sample-accurate loop region (drag on waveform).

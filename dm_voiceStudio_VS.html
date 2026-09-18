@@ -1,0 +1,1410 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Voice Separator · Voice Studio</title>
+    <style>
+        :root {
+    --bg: #0f172a;
+    --surface: #1e293b;
+    --surface2: #334155;
+    --border: #3f4d63;
+    --text: #e2e8f0;
+    --text-dim: #94a3b8;
+    --accent: #38bdf8;
+    --danger: #f87171;
+    --success: #4ade80;
+    --warning: #fbbf24;
+    --radius: 8px;
+    --font: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+}
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body {
+            background: var(--bg);
+            color: var(--text);
+            font-family: var(--font);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 20px;
+            overflow-x: hidden;
+        }
+        .app {
+            max-width: 1200px;
+            width: 100%;
+    background:
+        radial-gradient(900px 500px at 50% -10%, #1e293b, transparent 70%),
+        var(--bg);
+            border-radius: 16px;
+            border: 1px solid var(--border);
+            padding: 24px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+        }
+        h1 {
+            font-size: 1.8em;
+            font-weight: 700;
+            letter-spacing: -0.5px;
+            background: linear-gradient(135deg, #00d4ff, #a855f7, #ff6b9d);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            margin-bottom: 4px;
+        }
+        .subtitle {
+            color: var(--text-dim);
+            font-size: 0.9em;
+            margin-bottom: 20px;
+        }
+        .upload-zone {
+            border: 2px dashed var(--border);
+            border-radius: var(--radius);
+            padding: 32px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            background: var(--surface2);
+            margin-bottom: 20px;
+            position: relative;
+        }
+        .upload-zone:hover,
+        .upload-zone.dragover {
+            border-color: var(--accent);
+            background: rgba(0, 212, 255, 0.05);
+        }
+        .upload-zone input[type="file"] {
+            position: absolute;
+            inset: 0;
+            opacity: 0;
+            cursor: pointer;
+        }
+        .upload-zone .icon {
+            font-size: 3em;
+            margin-bottom: 8px;
+        }
+        .upload-zone .text {
+            font-size: 1.1em;
+            font-weight: 500;
+        }
+        .upload-zone .hint {
+            color: var(--text-dim);
+            font-size: 0.85em;
+            margin-top: 4px;
+        }
+        .upload-zone.file-loaded {
+            border-color: var(--success);
+            background: rgba(68, 255, 136, 0.05);
+        }
+        .file-info {
+            color: var(--success);
+            font-size: 0.9em;
+            margin-top: 6px;
+            font-weight: 500;
+        }
+        .controls-row {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            flex-wrap: wrap;
+            margin-bottom: 16px;
+            padding: 12px 16px;
+            background: var(--surface2);
+            border-radius: var(--radius);
+            border: 1px solid var(--border);
+        }
+        .btn {
+            padding: 8px 20px;
+            border-radius: 20px;
+            border: none;
+            cursor: pointer;
+            font-weight: 600;
+            font-size: 0.9em;
+            transition: all 0.2s ease;
+            font-family: var(--font);
+            letter-spacing: 0.3px;
+            white-space: nowrap;
+        }
+        .btn-play {
+            background: var(--accent);
+            color: #000;
+        }
+        .btn-play:hover {
+            background: #33ddff;
+            transform: scale(1.03);
+        }
+        .btn-stop {
+            background: #333;
+            color: #fff;
+        }
+        .btn-stop:hover {
+            background: #444;
+        }
+        .btn-bypass {
+            background: transparent;
+            border: 1px solid var(--border);
+            color: var(--text-dim);
+        }
+        .btn-bypass.active {
+            background: rgba(255, 170, 0, 0.2);
+            border-color: var(--warning);
+            color: var(--warning);
+        }
+        .btn-preset {
+            background: transparent;
+            border: 1px solid var(--border);
+            color: var(--text-dim);
+            padding: 6px 14px;
+            font-size: 0.8em;
+        }
+        .btn-preset:hover {
+            border-color: var(--accent);
+            color: var(--accent);
+        }
+        .time-display {
+            font-size: 0.9em;
+            color: var(--text-dim);
+            font-variant-numeric: tabular-nums;
+            min-width: 100px;
+            text-align: center;
+        }
+        .spectrum-container {
+            position: relative;
+            width: 100%;
+            height: 280px;
+            background: #050510;
+            border-radius: var(--radius);
+            border: 1px solid var(--border);
+            overflow: hidden;
+            margin-bottom: 16px;
+        }
+        .spectrum-container canvas {
+            position: absolute;
+            inset: 0;
+            width: 100%;
+            height: 100%;
+        }
+        .spectrum-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            pointer-events: none;
+        }
+        .waveform-container {
+            position: relative;
+            width: 100%;
+            height: 100px;
+            background: #050510;
+            border-radius: var(--radius);
+            border: 1px solid var(--border);
+            overflow: hidden;
+            margin-bottom: 16px;
+            cursor: pointer;
+        }
+        .waveform-container canvas {
+            position: absolute;
+            inset: 0;
+            width: 100%;
+            height: 100%;
+        }
+        .playhead {
+            position: absolute;
+            top: 0;
+            bottom: 0;
+            width: 2px;
+            background: var(--accent);
+            pointer-events: none;
+            box-shadow: 0 0 8px rgba(0, 212, 255, 0.8);
+        }
+        .band-panel {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+        .band-row {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 10px 14px;
+            background: var(--surface2);
+            border-radius: var(--radius);
+            border: 1px solid var(--border);
+            transition: all 0.2s ease;
+            flex-wrap: wrap;
+        }
+        .band-row.soloed {
+            border-color: var(--accent);
+            background: rgba(0, 212, 255, 0.08);
+        }
+        .band-row.muted {
+            opacity: 0.45;
+        }
+        .band-color-dot {
+            width: 14px;
+            height: 14px;
+            border-radius: 50%;
+            flex-shrink: 0;
+            box-shadow: 0 0 10px currentColor;
+        }
+        .band-name {
+            font-weight: 600;
+            font-size: 0.85em;
+            min-width: 90px;
+            flex-shrink: 0;
+        }
+        .band-freq {
+            font-size: 0.75em;
+            color: var(--text-dim);
+            min-width: 110px;
+            flex-shrink: 0;
+            font-variant-numeric: tabular-nums;
+        }
+        .band-slider {
+            flex: 1;
+            min-width: 100px;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+        .band-slider input[type="range"] {
+            -webkit-appearance: none;
+            width: 100%;
+            height: 5px;
+            border-radius: 3px;
+            background: #333;
+            outline: none;
+            cursor: pointer;
+        }
+        .band-slider input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            width: 16px;
+            height: 16px;
+            border-radius: 50%;
+            background: var(--thumb-color, #fff);
+            cursor: pointer;
+            box-shadow: 0 0 6px rgba(0, 0, 0, 0.5);
+        }
+        .band-slider input[type="range"]::-moz-range-thumb {
+            width: 16px;
+            height: 16px;
+            border-radius: 50%;
+            background: var(--thumb-color, #fff);
+            cursor: pointer;
+            border: none;
+        }
+        .band-slider .slider-label {
+            font-size: 0.7em;
+            color: var(--text-dim);
+            min-width: 18px;
+            text-align: center;
+        }
+        .band-buttons {
+            display: flex;
+            gap: 4px;
+            flex-shrink: 0;
+        }
+        .btn-solo,
+        .btn-mute,
+        .btn-export {
+            padding: 5px 10px;
+            border-radius: 4px;
+            border: 1px solid var(--border);
+            cursor: pointer;
+            font-size: 0.75em;
+            font-weight: 600;
+            transition: all 0.15s ease;
+            background: transparent;
+            color: var(--text-dim);
+            font-family: var(--font);
+        }
+        .btn-solo.active {
+            background: rgba(0, 212, 255, 0.25);
+            border-color: var(--accent);
+            color: var(--accent);
+        }
+        .btn-mute.active {
+            background: rgba(255, 68, 68, 0.25);
+            border-color: var(--danger);
+            color: var(--danger);
+        }
+        .btn-export:hover {
+            background: rgba(68, 255, 136, 0.15);
+            border-color: var(--success);
+            color: var(--success);
+        }
+        .band-meter {
+            width: 50px;
+            height: 18px;
+            background: #1a1a2e;
+            border-radius: 3px;
+            overflow: hidden;
+            flex-shrink: 0;
+            border: 1px solid var(--border);
+        }
+        .band-meter-fill {
+            height: 100%;
+            width: 0%;
+            background: var(--meter-color, #fff);
+            transition: width 0.08s ease;
+            border-radius: 2px;
+        }
+        .presets-row {
+            display: flex;
+            gap: 6px;
+            flex-wrap: wrap;
+            margin-bottom: 12px;
+            align-items: center;
+        }
+        .presets-row .label {
+            font-size: 0.8em;
+            color: var(--text-dim);
+            margin-right: 4px;
+        }
+        .note {
+            font-size: 0.75em;
+            color: var(--text-dim);
+            margin-top: 10px;
+            padding: 10px;
+            background: var(--surface2);
+            border-radius: 4px;
+            border-left: 3px solid var(--accent);
+            line-height: 1.4;
+        }
+        @media (max-width: 700px) {
+            .app {
+                padding: 12px;
+            }
+            .band-row {
+                flex-direction: column;
+                align-items: stretch;
+                gap: 6px;
+                padding: 8px;
+            }
+            .band-name,
+            .band-freq {
+                min-width: auto;
+            }
+            .band-freq {
+                font-size: 0.7em;
+            }
+            .band-slider {
+                min-width: auto;
+            }
+            .band-buttons {
+                justify-content: flex-end;
+            }
+            .band-meter {
+                width: 100%;
+                height: 6px;
+            }
+            h1 {
+                font-size: 1.3em;
+            }
+            .controls-row {
+                gap: 6px;
+                padding: 8px;
+            }
+            .btn {
+                padding: 6px 14px;
+                font-size: 0.8em;
+            }
+        }
+		.crumbs {
+    display: flex;
+    flex-wrap: wrap;
+    gap: .4rem;
+    align-items: center;
+    font-size: .8rem;
+    color: var(--text-dim);
+    margin-bottom: 1rem;
+}
+.crumbs a {
+    color: var(--text-dim);
+    text-decoration: none;
+    transition: color .15s;
+}
+.crumbs a:hover { color: var(--accent); }
+.crumbs .current { color: var(--text); }
+    </style>
+</head>
+<body>
+
+    <div class="app">
+	<nav class="crumbs">
+    <a href="index.html">Documents Manager</a>
+    <span>/</span>
+    <a href="dm_voiceStudio.html">Voice Studio</a>
+    <span>/</span>
+    <span class="current">Voice Separator</span>
+</nav>
+        <h1>Voice Separator</h1>
+<p class="subtitle">Load an MP3 and isolate birds, voices, movements &amp; more — frequency-based separation with real-time preview and export.</p>
+
+        <!-- Upload Zone -->
+        <div class="upload-zone" id="uploadZone">
+            <input type="file" id="fileInput" accept=".mp3,.wav,.ogg,.flac,.m4a,.aac,audio/*">
+            <div class="icon">📂</div>
+            <div class="text">Drop audio file here or click to browse</div>
+            <div class="hint">MP3, WAV, OGG, FLAC supported — decoded in your browser</div>
+            <div class="file-info" id="fileInfo" style="display:none;"></div>
+        </div>
+
+        <!-- Transport Controls -->
+        <div class="controls-row" id="transportControls" style="display:none;">
+            <button class="btn btn-play" id="btnPlay">▶ Play</button>
+            <button class="btn btn-stop" id="btnStop">⏹ Stop</button>
+            <button class="btn btn-bypass" id="btnBypass" title="Toggle bypass (original audio)">Bypass</button>
+            <span class="time-display" id="timeDisplay">0:00 / 0:00</span>
+            <div style="flex:1;"></div>
+            <div class="presets-row" style="margin-bottom:0;">
+                <span class="label">Presets:</span>
+                <button class="btn btn-preset" data-preset="all">All</button>
+                <button class="btn btn-preset" data-preset="birds">Birds</button>
+                <button class="btn btn-preset" data-preset="voices">Voices</button>
+                <button class="btn btn-preset" data-preset="movement">Movement</button>
+                <button class="btn btn-preset" data-preset="ambient">Ambient</button>
+            </div>
+        </div>
+
+        <!-- Spectrum Analyzer -->
+        <div class="spectrum-container" id="spectrumContainer" style="display:none;">
+            <canvas id="spectrumCanvas"></canvas>
+        </div>
+
+        <!-- Waveform -->
+        <div class="waveform-container" id="waveformContainer" style="display:none;">
+            <canvas id="waveformCanvas"></canvas>
+            <div class="playhead" id="playhead"></div>
+        </div>
+
+        <!-- Band Controls -->
+        <div class="band-panel" id="bandPanel" style="display:none;"></div>
+
+        <!-- Info Note -->
+        <div class="note" id="note" style="display:none;">
+            <strong>How it works:</strong> This tool splits audio into <strong>6 overlapping frequency bands</strong>. Each band isolates different sound categories — sub‑bass rumble, footsteps, male voices, general speech, bird calls, and high‑frequency insects/small birds. Use <strong>SOLO</strong> to preview a single band, <strong>MUTE</strong> to silence one, and adjust the frequency cutoffs and volume to fine‑tune isolation. <strong>Volume now goes up to 10×</strong> for weak signals. Click the <strong>⬇ Export</strong> button on a band to download that band's isolated audio as a WAV file (after rendering with your current settings). <em>Frequency‑based filtering works best when sounds occupy distinct frequency ranges.</em>
+        </div>
+		<a href="dm_voiceStudio.html" style="display:inline-block;margin-top:1.25rem;font-size:.88rem;color:var(--accent);text-decoration:none;">
+    ← Back to Voice Studio
+</a>
+    </div>
+
+    <script>
+        (function() {
+            // ─── DOM References ───
+            const uploadZone = document.getElementById('uploadZone');
+            const fileInput = document.getElementById('fileInput');
+            const fileInfo = document.getElementById('fileInfo');
+            const transportControls = document.getElementById('transportControls');
+            const btnPlay = document.getElementById('btnPlay');
+            const btnStop = document.getElementById('btnStop');
+            const btnBypass = document.getElementById('btnBypass');
+            const timeDisplay = document.getElementById('timeDisplay');
+            const spectrumContainer = document.getElementById('spectrumContainer');
+            const spectrumCanvas = document.getElementById('spectrumCanvas');
+            const waveformContainer = document.getElementById('waveformContainer');
+            const waveformCanvas = document.getElementById('waveformCanvas');
+            const playheadEl = document.getElementById('playhead');
+            const bandPanel = document.getElementById('bandPanel');
+            const note = document.getElementById('note');
+
+            // ─── Audio State ───
+            let audioCtx = null;
+            let audioBuffer = null;
+            let sourceNode = null;
+            let isPlaying = false;
+            let isBypassed = false;
+            let playbackStartTime = 0;
+            let playbackOffset = 0;
+            let animFrameId = null;
+            let activeSoloBand = -1;
+
+            // ─── Band Configuration ───
+            const bandColors = [
+                '#ff4444', '#ff8c42', '#ffd93d', '#44dd88', '#44aaff', '#c084fc'
+            ];
+            const bandNames = [
+                'Movements', 'Footsteps', 'Low Voices', 'Mid Voices', 'High Voices', 'Birds/Insects'
+            ];
+            const defaultFreqLow = [20, 80, 200, 500, 1200, 3000];
+            const defaultFreqHigh = [150, 350, 800, 2000, 5000, 12000];
+            const defaultVolumes = [1.0, 1.0, 1.0, 1.0, 1.0, 1.0];
+
+            // ─── Filter & Gain Nodes ───
+            let bandFilters = [];
+            let masterGain = null;
+            let analyserMain = null;
+            let analyserWaveform = null;
+
+            // ─── UI State ───
+            let bandUIState = [];
+
+            // ─── Frequency Helpers ───
+            const MIN_FREQ = 20;
+            const MAX_FREQ = 20000;
+            const SLIDER_MAX = 1000;
+
+            function freqToSlider(freq) {
+                return Math.round(SLIDER_MAX * Math.log(freq / MIN_FREQ) / Math.log(MAX_FREQ / MIN_FREQ));
+            }
+
+            function sliderToFreq(sliderVal) {
+                return MIN_FREQ * Math.pow(MAX_FREQ / MIN_FREQ, sliderVal / SLIDER_MAX);
+            }
+
+            function formatFreq(freq) {
+                if (freq >= 1000) return (freq / 1000).toFixed(1) + ' kHz';
+                return Math.round(freq) + ' Hz';
+            }
+
+            function formatTime(seconds) {
+                if (!isFinite(seconds) || seconds < 0) seconds = 0;
+                const m = Math.floor(seconds / 60);
+                const s = Math.floor(seconds % 60);
+                return m + ':' + (s < 10 ? '0' : '') + s;
+            }
+
+            // ─── File Loading ───
+            function loadAudioFile(file) {
+                const reader = new FileReader();
+                reader.onload = async function(e) {
+                    try {
+                        const arrayBuffer = e.target.result;
+                        if (!audioCtx) {
+                            audioCtx = new(window.AudioContext || window.webkitAudioContext)();
+                        }
+                        audioBuffer = await audioCtx.decodeAudioData(arrayBuffer);
+                        onAudioLoaded();
+                    } catch (err) {
+                        console.error('Failed to decode audio:', err);
+                        alert('Could not decode audio file. Please try a different file (MP3 recommended).');
+                    }
+                };
+                reader.onerror = function() {
+                    alert('Failed to read file.');
+                };
+                reader.readAsArrayBuffer(file);
+            }
+
+            function onAudioLoaded() {
+                if (!audioBuffer) return;
+                const dur = audioBuffer.duration;
+                fileInfo.textContent = '✅ ' + audioBuffer.duration.toFixed(2) + 's · ' +
+                    audioBuffer.numberOfChannels + 'ch · ' +
+                    (audioBuffer.sampleRate / 1000).toFixed(1) + 'kHz';
+                fileInfo.style.display = 'block';
+                uploadZone.classList.add('file-loaded');
+
+                transportControls.style.display = 'flex';
+                spectrumContainer.style.display = 'block';
+                waveformContainer.style.display = 'block';
+                bandPanel.style.display = 'flex';
+                note.style.display = 'block';
+
+                setupAudioGraph();
+                setupBandUI();
+                drawWaveform();
+                startAnimationLoop();
+                stopPlayback();
+                playbackOffset = 0;
+                updateTimeDisplay();
+                updatePlayhead();
+            }
+
+            // ─── Audio Graph ───
+            function setupAudioGraph() {
+                if (!audioCtx) {
+                    audioCtx = new(window.AudioContext || window.webkitAudioContext)();
+                }
+
+                masterGain = audioCtx.createGain();
+                masterGain.gain.value = 1.0;
+
+                analyserMain = audioCtx.createAnalyser();
+                analyserMain.fftSize = 4096;
+                analyserMain.smoothingTimeConstant = 0.75;
+
+                analyserWaveform = audioCtx.createAnalyser();
+                analyserWaveform.fftSize = 2048;
+                analyserWaveform.smoothingTimeConstant = 0.3;
+
+                masterGain.connect(analyserMain);
+                analyserMain.connect(audioCtx.destination);
+                masterGain.connect(analyserWaveform);
+                analyserWaveform.connect(audioCtx.destination);
+
+                bandFilters = [];
+                for (let i = 0; i < 6; i++) {
+                    const hp1 = audioCtx.createBiquadFilter();
+                    hp1.type = 'highpass';
+                    hp1.frequency.value = defaultFreqLow[i];
+                    hp1.Q.value = 0.7;
+
+                    const hp2 = audioCtx.createBiquadFilter();
+                    hp2.type = 'highpass';
+                    hp2.frequency.value = defaultFreqLow[i];
+                    hp2.Q.value = 0.7;
+
+                    const lp1 = audioCtx.createBiquadFilter();
+                    lp1.type = 'lowpass';
+                    lp1.frequency.value = defaultFreqHigh[i];
+                    lp1.Q.value = 0.7;
+
+                    const lp2 = audioCtx.createBiquadFilter();
+                    lp2.type = 'lowpass';
+                    lp2.frequency.value = defaultFreqHigh[i];
+                    lp2.Q.value = 0.7;
+
+                    const gain = audioCtx.createGain();
+                    gain.gain.value = defaultVolumes[i];
+
+                    hp1.connect(hp2);
+                    hp2.connect(lp1);
+                    lp1.connect(lp2);
+                    lp2.connect(gain);
+                    gain.connect(masterGain);
+
+                    bandFilters.push({
+                        highpassNodes: [hp1, hp2],
+                        lowpassNodes: [lp1, lp2],
+                        gainNode: gain,
+                        lowFreq: defaultFreqLow[i],
+                        highFreq: defaultFreqHigh[i],
+                        volume: defaultVolumes[i],
+                        solo: false,
+                        mute: false,
+                    });
+                }
+
+                bandUIState = bandFilters.map((f, i) => ({
+                    solo: false,
+                    mute: false,
+                    lowFreq: f.lowFreq,
+                    highFreq: f.highFreq,
+                    volume: f.volume,
+                }));
+            }
+
+            function updateBandFilters() {
+                for (let i = 0; i < bandFilters.length; i++) {
+                    const bf = bandFilters[i];
+                    const ui = bandUIState[i];
+                    const lowFreq = ui.lowFreq;
+                    const highFreq = Math.max(ui.highFreq, lowFreq * 1.1);
+                    ui.highFreq = highFreq;
+                    bf.lowFreq = lowFreq;
+                    bf.highFreq = highFreq;
+                    bf.volume = ui.volume;
+
+                    for (const hp of bf.highpassNodes) {
+                        hp.frequency.setTargetAtTime(lowFreq, audioCtx.currentTime, 0.02);
+                    }
+                    for (const lp of bf.lowpassNodes) {
+                        lp.frequency.setTargetAtTime(highFreq, audioCtx.currentTime, 0.02);
+                    }
+
+                    const shouldBeAudible = !ui.mute && (activeSoloBand === -1 || ui.solo);
+                    const targetGain = shouldBeAudible ? ui.volume : 0;
+                    bf.gainNode.gain.setTargetAtTime(targetGain, audioCtx.currentTime, 0.03);
+                }
+            }
+
+            function setBypass(bypassed) {
+                isBypassed = bypassed;
+                btnBypass.classList.toggle('active', bypassed);
+                if (masterGain) {
+                    masterGain.gain.setTargetAtTime(bypassed ? 0.001 : 1.0, audioCtx.currentTime, 0.03);
+                }
+                if (bypassed) {
+                    for (const bf of bandFilters) {
+                        bf.gainNode.gain.setTargetAtTime(0, audioCtx.currentTime, 0.03);
+                    }
+                } else {
+                    updateBandFilters();
+                }
+            }
+
+            // ─── Playback ───
+            function startPlayback(fromOffset) {
+                if (!audioBuffer || !audioCtx) return;
+                if (audioCtx.state === 'suspended') {
+                    audioCtx.resume();
+                }
+                stopPlayback();
+
+                const offset = Math.max(0, Math.min(fromOffset || 0, audioBuffer.duration));
+                sourceNode = audioCtx.createBufferSource();
+                sourceNode.buffer = audioBuffer;
+
+                for (const bf of bandFilters) {
+                    sourceNode.connect(bf.highpassNodes[0]);
+                }
+                const bypassGain = audioCtx.createGain();
+                bypassGain.gain.value = isBypassed ? 1 : 0.001;
+                sourceNode.connect(bypassGain);
+                bypassGain.connect(masterGain);
+                sourceNode._bypassGain = bypassGain;
+
+                sourceNode.onended = function() {
+                    if (isPlaying) {
+                        stopPlayback();
+                        playbackOffset = 0;
+                        updateTimeDisplay();
+                        updatePlayhead();
+                        btnPlay.textContent = '▶ Play';
+                        isPlaying = false;
+                    }
+                };
+
+                sourceNode.start(0, offset);
+                playbackStartTime = audioCtx.currentTime;
+                playbackOffset = offset;
+                isPlaying = true;
+                btnPlay.textContent = '⏸ Pause';
+                updateBandFilters();
+            }
+
+            function stopPlayback() {
+                if (sourceNode) {
+                    try {
+                        sourceNode.onended = null;
+                        sourceNode.stop();
+                    } catch (e) {}
+                    if (sourceNode._bypassGain) {
+                        try { sourceNode._bypassGain.disconnect(); } catch (e) {}
+                    }
+                    sourceNode = null;
+                }
+                isPlaying = false;
+                btnPlay.textContent = '▶ Play';
+            }
+
+            function togglePlayPause() {
+                if (!audioBuffer) return;
+                if (isPlaying) {
+                    const elapsed = audioCtx.currentTime - playbackStartTime;
+                    playbackOffset = playbackOffset + elapsed;
+                    stopPlayback();
+                    updateTimeDisplay();
+                    updatePlayhead();
+                } else {
+                    if (playbackOffset >= audioBuffer.duration) {
+                        playbackOffset = 0;
+                    }
+                    startPlayback(playbackOffset);
+                }
+            }
+
+            function updateTimeDisplay() {
+                if (!audioBuffer) return;
+                const current = isPlaying ?
+                    playbackOffset + (audioCtx.currentTime - playbackStartTime) :
+                    playbackOffset;
+                timeDisplay.textContent = formatTime(current) + ' / ' + formatTime(audioBuffer.duration);
+            }
+
+            function updatePlayhead() {
+                if (!audioBuffer || !waveformContainer) return;
+                const current = isPlaying ?
+                    playbackOffset + (audioCtx.currentTime - playbackStartTime) :
+                    playbackOffset;
+                const pct = Math.max(0, Math.min(100, (current / audioBuffer.duration) * 100));
+                playheadEl.style.left = pct + '%';
+                playheadEl.style.display = 'block';
+            }
+
+            // ─── Spectrum & Waveform Drawing ───
+            function resizeCanvases() {
+                const dpr = window.devicePixelRatio || 1;
+                const specRect = spectrumContainer.getBoundingClientRect();
+                spectrumCanvas.width = specRect.width * dpr;
+                spectrumCanvas.height = specRect.height * dpr;
+                spectrumCanvas.style.width = specRect.width + 'px';
+                spectrumCanvas.style.height = specRect.height + 'px';
+
+                const waveRect = waveformContainer.getBoundingClientRect();
+                waveformCanvas.width = waveRect.width * dpr;
+                waveformCanvas.height = waveRect.height * dpr;
+                waveformCanvas.style.width = waveRect.width + 'px';
+                waveformCanvas.style.height = waveRect.height + 'px';
+            }
+
+            function drawSpectrum() {
+                if (!analyserMain || !spectrumCanvas || !audioBuffer) return;
+                const ctx = spectrumCanvas.getContext('2d');
+                const dpr = window.devicePixelRatio || 1;
+                const w = spectrumCanvas.width / dpr;
+                const h = spectrumCanvas.height / dpr;
+
+                ctx.clearRect(0, 0, w, h);
+                ctx.fillStyle = '#050510';
+                ctx.fillRect(0, 0, w, h);
+
+                const freqMarks = [20, 50, 100, 200, 500, 1000, 2000, 5000, 10000, 20000];
+                ctx.strokeStyle = 'rgba(255,255,255,0.06)';
+                ctx.lineWidth = 0.5;
+                ctx.beginPath();
+                for (const f of freqMarks) {
+                    const x = Math.log(f / MIN_FREQ) / Math.log(MAX_FREQ / MIN_FREQ) * w;
+                    ctx.moveTo(x, 0);
+                    ctx.lineTo(x, h);
+                    ctx.fillStyle = 'rgba(255,255,255,0.25)';
+                    ctx.font = '9px monospace';
+                    ctx.fillText(formatFreq(f), x + 2, h - 4);
+                }
+                ctx.stroke();
+
+                if (bandUIState.length === 6) {
+                    for (let i = 0; i < 6; i++) {
+                        const ui = bandUIState[i];
+                        const x1 = Math.log(ui.lowFreq / MIN_FREQ) / Math.log(MAX_FREQ / MIN_FREQ) * w;
+                        const x2 = Math.log(ui.highFreq / MIN_FREQ) / Math.log(MAX_FREQ / MIN_FREQ) * w;
+                        const isAudible = !ui.mute && (activeSoloBand === -1 || ui.solo);
+                        const alpha = isAudible ? 0.18 : 0.05;
+                        const hex = bandColors[i].replace('#', '');
+                        const r = parseInt(hex.substring(0, 2), 16);
+                        const g = parseInt(hex.substring(2, 4), 16);
+                        const b = parseInt(hex.substring(4, 6), 16);
+                        ctx.fillStyle = 'rgba(' + r + ',' + g + ',' + b + ',' + alpha + ')';
+                        ctx.fillRect(x1, 0, x2 - x1, h);
+                        ctx.strokeStyle = 'rgba(' + r + ',' + g + ',' + b + ',0.4)';
+                        ctx.lineWidth = 1;
+                        ctx.strokeRect(x1, 1, x2 - x1, h - 2);
+                        ctx.fillStyle = 'rgba(' + r + ',' + g + ',' + b + ',0.7)';
+                        ctx.font = '10px monospace';
+                        ctx.fillText(bandNames[i], (x1 + x2) / 2 - bandNames[i].length * 3, 14);
+                    }
+                }
+
+                const fftData = new Float32Array(analyserMain.frequencyBinCount);
+                analyserMain.getFloatFrequencyData(fftData);
+                const nyquist = audioCtx.sampleRate / 2;
+                const minDb = -90;
+                const maxDb = -10;
+
+                ctx.beginPath();
+                let first = true;
+                for (let i = 0; i < fftData.length; i++) {
+                    const freq = (i / fftData.length) * nyquist;
+                    if (freq < MIN_FREQ || freq > MAX_FREQ) continue;
+                    const x = Math.log(freq / MIN_FREQ) / Math.log(MAX_FREQ / MIN_FREQ) * w;
+                    const db = Math.max(minDb, Math.min(maxDb, fftData[i] || minDb));
+                    const normVal = (db - minDb) / (maxDb - minDb);
+                    const y = h - normVal * h;
+                    if (first) { ctx.moveTo(x, y);
+                        first = false; } else { ctx.lineTo(x, y); }
+                }
+                ctx.strokeStyle = '#00d4ff';
+                ctx.lineWidth = 1.5;
+                ctx.shadowColor = '#00d4ff';
+                ctx.shadowBlur = 4;
+                ctx.stroke();
+                ctx.shadowBlur = 0;
+
+                ctx.fillStyle = 'rgba(255,255,255,0.5)';
+                ctx.font = '10px monospace';
+                ctx.fillText('20 Hz', 4, 12);
+                ctx.fillText('20 kHz', w - 40, 12);
+            }
+
+            function drawWaveform() {
+                if (!audioBuffer || !waveformCanvas) return;
+                const ctx = waveformCanvas.getContext('2d');
+                const dpr = window.devicePixelRatio || 1;
+                const w = waveformCanvas.width / dpr;
+                const h = waveformCanvas.height / dpr;
+
+                ctx.clearRect(0, 0, w, h);
+                ctx.fillStyle = '#050510';
+                ctx.fillRect(0, 0, w, h);
+
+                const channelData = audioBuffer.getChannelData(0);
+                const numSamples = channelData.length;
+                const samplesPerPixel = Math.floor(numSamples / w);
+                const midY = h / 2;
+                const ampScale = h / 2 * 0.9;
+
+                ctx.beginPath();
+                for (let x = 0; x < w; x++) {
+                    const startIdx = Math.floor(x * samplesPerPixel);
+                    const endIdx = Math.min(Math.floor((x + 1) * samplesPerPixel), numSamples);
+                    let minVal = 0,
+                        maxVal = 0;
+                    for (let j = startIdx; j < endIdx; j++) {
+                        const val = channelData[j];
+                        if (val > maxVal) maxVal = val;
+                        if (val < minVal) minVal = val;
+                    }
+                    const yTop = midY - maxVal * ampScale;
+                    const yBottom = midY - minVal * ampScale;
+                    ctx.moveTo(x, yTop);
+                    ctx.lineTo(x, yBottom);
+                }
+                ctx.strokeStyle = 'rgba(160,160,220,0.6)';
+                ctx.lineWidth = 0.8;
+                ctx.stroke();
+
+                ctx.strokeStyle = 'rgba(255,255,255,0.08)';
+                ctx.lineWidth = 0.5;
+                ctx.beginPath();
+                ctx.moveTo(0, midY);
+                ctx.lineTo(w, midY);
+                ctx.stroke();
+            }
+
+            function startAnimationLoop() {
+                if (animFrameId) cancelAnimationFrame(animFrameId);
+
+                function loop() {
+                    drawSpectrum();
+                    updateTimeDisplay();
+                    updatePlayhead();
+                    updateBandMeters();
+                    animFrameId = requestAnimationFrame(loop);
+                }
+                loop();
+            }
+
+            function updateBandMeters() {
+                if (!analyserMain || bandUIState.length !== 6) return;
+                const fftData = new Float32Array(analyserMain.frequencyBinCount);
+                analyserMain.getFloatFrequencyData(fftData);
+                const nyquist = audioCtx.sampleRate / 2;
+
+                for (let i = 0; i < 6; i++) {
+                    const ui = bandUIState[i];
+                    const lowFreq = ui.lowFreq;
+                    const highFreq = ui.highFreq;
+                    let sum = 0;
+                    let count = 0;
+                    for (let j = 0; j < fftData.length; j++) {
+                        const freq = (j / fftData.length) * nyquist;
+                        if (freq >= lowFreq && freq <= highFreq) {
+                            const db = fftData[j] || -90;
+                            sum += Math.max(0, (db + 90) / 90);
+                            count++;
+                        }
+                    }
+                    const level = count > 0 ? Math.min(1, sum / count * 2) : 0;
+                    const meterFill = document.querySelector('.band-meter-fill[data-band="' + i + '"]');
+                    if (meterFill) {
+                        meterFill.style.width = (level * 100) + '%';
+                    }
+                }
+            }
+
+            // ─── Band UI ───
+            function setupBandUI() {
+                bandPanel.innerHTML = '';
+                for (let i = 0; i < 6; i++) {
+                    const row = document.createElement('div');
+                    row.className = 'band-row';
+                    row.id = 'bandRow-' + i;
+
+                    const colorDot = document.createElement('div');
+                    colorDot.className = 'band-color-dot';
+                    colorDot.style.backgroundColor = bandColors[i];
+                    colorDot.style.color = bandColors[i];
+
+                    const nameEl = document.createElement('span');
+                    nameEl.className = 'band-name';
+                    nameEl.textContent = bandNames[i];
+                    nameEl.style.color = bandColors[i];
+
+                    const freqEl = document.createElement('span');
+                    freqEl.className = 'band-freq';
+                    freqEl.id = 'bandFreq-' + i;
+                    freqEl.textContent = formatFreq(defaultFreqLow[i]) + ' – ' + formatFreq(defaultFreqHigh[i]);
+
+                    const lowSliderWrap = document.createElement('div');
+                    lowSliderWrap.className = 'band-slider';
+                    lowSliderWrap.innerHTML = '<span class="slider-label">Lo</span>';
+                    const lowSlider = document.createElement('input');
+                    lowSlider.type = 'range';
+                    lowSlider.min = 0;
+                    lowSlider.max = SLIDER_MAX;
+                    lowSlider.value = freqToSlider(defaultFreqLow[i]);
+                    lowSlider.style.setProperty('--thumb-color', bandColors[i]);
+                    lowSlider.title = 'Low cutoff';
+                    lowSliderWrap.appendChild(lowSlider);
+
+                    const highSliderWrap = document.createElement('div');
+                    highSliderWrap.className = 'band-slider';
+                    highSliderWrap.innerHTML = '<span class="slider-label">Hi</span>';
+                    const highSlider = document.createElement('input');
+                    highSlider.type = 'range';
+                    highSlider.min = 0;
+                    highSlider.max = SLIDER_MAX;
+                    highSlider.value = freqToSlider(defaultFreqHigh[i]);
+                    highSlider.style.setProperty('--thumb-color', bandColors[i]);
+                    highSlider.title = 'High cutoff';
+                    highSliderWrap.appendChild(highSlider);
+
+                    // Volume slider with boost up to 10x
+                    const volSliderWrap = document.createElement('div');
+                    volSliderWrap.className = 'band-slider';
+                    volSliderWrap.innerHTML = '<span class="slider-label">Vol</span>';
+                    const volSlider = document.createElement('input');
+                    volSlider.type = 'range';
+                    volSlider.min = 0;
+                    volSlider.max = 1000; // 0 to 10.0
+                    volSlider.value = Math.round(defaultVolumes[i] * 100); // default 100 = 1.0
+                    volSlider.style.setProperty('--thumb-color', '#fff');
+                    volSlider.title = 'Volume (0-10x gain)';
+                    volSliderWrap.appendChild(volSlider);
+
+                    const btnWrap = document.createElement('div');
+                    btnWrap.className = 'band-buttons';
+                    const soloBtn = document.createElement('button');
+                    soloBtn.className = 'btn-solo';
+                    soloBtn.textContent = 'S';
+                    soloBtn.title = 'Solo this band';
+                    soloBtn.dataset.band = i;
+                    const muteBtn = document.createElement('button');
+                    muteBtn.className = 'btn-mute';
+                    muteBtn.textContent = 'M';
+                    muteBtn.title = 'Mute this band';
+                    muteBtn.dataset.band = i;
+                    const exportBtn = document.createElement('button');
+                    exportBtn.className = 'btn-export';
+                    exportBtn.innerHTML = '⬇';
+                    exportBtn.title = 'Export this band as WAV';
+                    exportBtn.dataset.band = i;
+                    btnWrap.appendChild(soloBtn);
+                    btnWrap.appendChild(muteBtn);
+                    btnWrap.appendChild(exportBtn);
+
+                    const meter = document.createElement('div');
+                    meter.className = 'band-meter';
+                    const meterFill = document.createElement('div');
+                    meterFill.className = 'band-meter-fill';
+                    meterFill.style.setProperty('--meter-color', bandColors[i]);
+                    meterFill.dataset.band = i;
+                    meter.appendChild(meterFill);
+
+                    row.appendChild(colorDot);
+                    row.appendChild(nameEl);
+                    row.appendChild(freqEl);
+                    row.appendChild(lowSliderWrap);
+                    row.appendChild(highSliderWrap);
+                    row.appendChild(volSliderWrap);
+                    row.appendChild(btnWrap);
+                    row.appendChild(meter);
+                    bandPanel.appendChild(row);
+
+                    // Events
+                    lowSlider.addEventListener('input', function() {
+                        const val = sliderToFreq(parseInt(this.value));
+                        bandUIState[i].lowFreq = val;
+                        if (bandUIState[i].highFreq < val * 1.05) {
+                            bandUIState[i].highFreq = val * 1.05;
+                            highSlider.value = freqToSlider(bandUIState[i].highFreq);
+                        }
+                        freqEl.textContent = formatFreq(bandUIState[i].lowFreq) + ' – ' + formatFreq(bandUIState[i]
+                            .highFreq);
+                        updateBandFilters();
+                    });
+                    highSlider.addEventListener('input', function() {
+                        const val = sliderToFreq(parseInt(this.value));
+                        if (val < bandUIState[i].lowFreq * 1.05) {
+                            bandUIState[i].lowFreq = val / 1.05;
+                            lowSlider.value = freqToSlider(bandUIState[i].lowFreq);
+                        }
+                        bandUIState[i].highFreq = val;
+                        freqEl.textContent = formatFreq(bandUIState[i].lowFreq) + ' – ' + formatFreq(bandUIState[i]
+                            .highFreq);
+                        updateBandFilters();
+                    });
+                    volSlider.addEventListener('input', function() {
+                        bandUIState[i].volume = parseInt(this.value) / 100; // 100 = 1.0, 1000 = 10.0
+                        updateBandFilters();
+                    });
+                    soloBtn.addEventListener('click', function() {
+                        const bandIdx = parseInt(this.dataset.band);
+                        if (activeSoloBand === bandIdx) {
+                            activeSoloBand = -1;
+                            bandUIState[bandIdx].solo = false;
+                            soloBtn.classList.remove('active');
+                        } else {
+                            if (activeSoloBand !== -1) {
+                                const prevSoloBtn = document.querySelector('.btn-solo.active');
+                                if (prevSoloBtn) prevSoloBtn.classList.remove('active');
+                                bandUIState[activeSoloBand].solo = false;
+                            }
+                            activeSoloBand = bandIdx;
+                            bandUIState[bandIdx].solo = true;
+                            soloBtn.classList.add('active');
+                        }
+                        updateBandRowVisuals();
+                        updateBandFilters();
+                    });
+                    muteBtn.addEventListener('click', function() {
+                        const bandIdx = parseInt(this.dataset.band);
+                        bandUIState[bandIdx].mute = !bandUIState[bandIdx].mute;
+                        muteBtn.classList.toggle('active', bandUIState[bandIdx].mute);
+                        updateBandRowVisuals();
+                        updateBandFilters();
+                    });
+                    exportBtn.addEventListener('click', function() {
+                        exportBand(parseInt(this.dataset.band));
+                    });
+
+                    bandUIState[i]._row = row;
+                    bandUIState[i]._freqEl = freqEl;
+                    bandUIState[i]._lowSlider = lowSlider;
+                    bandUIState[i]._highSlider = highSlider;
+                    bandUIState[i]._volSlider = volSlider;
+                    bandUIState[i]._soloBtn = soloBtn;
+                    bandUIState[i]._muteBtn = muteBtn;
+                    bandUIState[i]._meterFill = meterFill;
+                }
+                updateBandRowVisuals();
+            }
+
+            function updateBandRowVisuals() {
+                for (let i = 0; i < 6; i++) {
+                    const ui = bandUIState[i];
+                    if (!ui._row) continue;
+                    ui._row.classList.toggle('soloed', ui.solo);
+                    ui._row.classList.toggle('muted', ui.mute && !ui.solo);
+                    if (ui._soloBtn) ui._soloBtn.classList.toggle('active', ui.solo);
+                    if (ui._muteBtn) ui._muteBtn.classList.toggle('active', ui.mute);
+                }
+            }
+
+            // ─── Presets ───
+            function applyPreset(name) {
+                if (!audioBuffer) return;
+                const presets = {
+                    all: { lows: [20, 80, 200, 500, 1200, 3000], highs: [150, 350, 800, 2000, 5000, 12000], vols: [1, 1,
+                            1, 1, 1, 1
+                        ], mutes: [false, false, false, false, false, false], solo: -1 },
+                    birds: { lows: [20, 80, 200, 500, 1500, 3500], highs: [100, 250, 600, 1200, 4000, 16000], vols: [0.1,
+                            0.15, 0.2, 0.3, 0.8, 1.0
+                        ], mutes: [false, false, false, false, false, false], solo: -1 },
+                    voices: { lows: [20, 80, 180, 400, 800, 1500], highs: [120, 300, 700, 1800, 4000, 7000], vols: [0.05,
+                            0.1, 0.5, 1.0, 0.7, 0.2
+                        ], mutes: [false, false, false, false, false, false], solo: -1 },
+                    movement: { lows: [15, 60, 150, 350, 800, 2000], highs: [120, 300, 600, 1200, 3000, 8000], vols: [1.0,
+                            0.8, 0.4, 0.2, 0.1, 0.03
+                        ], mutes: [false, false, false, false, false, false], solo: -1 },
+                    ambient: { lows: [20, 60, 150, 400, 1000, 2500], highs: [200, 400, 1000, 2500, 6000, 15000], vols: [
+                            0.8, 0.7, 0.5, 0.4, 0.6, 0.8
+                        ], mutes: [false, false, false, false, false, false], solo: -1 },
+                };
+                const p = presets[name];
+                if (!p) return;
+                activeSoloBand = p.solo;
+                for (let i = 0; i < 6; i++) {
+                    bandUIState[i].lowFreq = p.lows[i];
+                    bandUIState[i].highFreq = p.highs[i];
+                    bandUIState[i].volume = p.vols[i];
+                    bandUIState[i].solo = (p.solo === i);
+                    bandUIState[i].mute = p.mutes[i];
+                    if (bandUIState[i]._lowSlider) bandUIState[i]._lowSlider.value = freqToSlider(p.lows[i]);
+                    if (bandUIState[i]._highSlider) bandUIState[i]._highSlider.value = freqToSlider(p.highs[i]);
+                    if (bandUIState[i]._volSlider) bandUIState[i]._volSlider.value = Math.round(p.vols[i] * 100);
+                    if (bandUIState[i]._freqEl) bandUIState[i]._freqEl.textContent = formatFreq(p.lows[i]) + ' – ' +
+                        formatFreq(p.highs[i]);
+                    if (bandUIState[i]._soloBtn) bandUIState[i]._soloBtn.classList.toggle('active', bandUIState[i].solo);
+                    if (bandUIState[i]._muteBtn) bandUIState[i]._muteBtn.classList.toggle('active', bandUIState[i].mute);
+                }
+                updateBandRowVisuals();
+                updateBandFilters();
+            }
+
+            // ─── Export Band as WAV ───
+            async function exportBand(bandIndex) {
+                if (!audioBuffer) return;
+                const ui = bandUIState[bandIndex];
+                const offlineCtx = new OfflineAudioContext(
+                    audioBuffer.numberOfChannels,
+                    audioBuffer.length,
+                    audioBuffer.sampleRate
+                );
+                // Create source
+                const src = offlineCtx.createBufferSource();
+                src.buffer = audioBuffer;
+
+                // Build same filter chain for this band only
+                const hp1 = offlineCtx.createBiquadFilter();
+                hp1.type = 'highpass';
+                hp1.frequency.value = ui.lowFreq;
+                hp1.Q.value = 0.7;
+                const hp2 = offlineCtx.createBiquadFilter();
+                hp2.type = 'highpass';
+                hp2.frequency.value = ui.lowFreq;
+                hp2.Q.value = 0.7;
+                const lp1 = offlineCtx.createBiquadFilter();
+                lp1.type = 'lowpass';
+                lp1.frequency.value = ui.highFreq;
+                lp1.Q.value = 0.7;
+                const lp2 = offlineCtx.createBiquadFilter();
+                lp2.type = 'lowpass';
+                lp2.frequency.value = ui.highFreq;
+                lp2.Q.value = 0.7;
+                const gain = offlineCtx.createGain();
+                gain.gain.value = ui.volume;
+
+                src.connect(hp1);
+                hp1.connect(hp2);
+                hp2.connect(lp1);
+                lp1.connect(lp2);
+                lp2.connect(gain);
+                gain.connect(offlineCtx.destination);
+
+                src.start(0);
+                const renderedBuffer = await offlineCtx.startRendering();
+
+                // Encode to WAV
+                const wavBlob = bufferToWav(renderedBuffer);
+                const url = URL.createObjectURL(wavBlob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `band_${bandIndex + 1}_${bandNames[bandIndex].replace(/[^a-z0-9]/gi, '_')}.wav`;
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                setTimeout(() => URL.revokeObjectURL(url), 1000);
+            }
+
+            function bufferToWav(buffer) {
+                const numChannels = buffer.numberOfChannels;
+                const sampleRate = buffer.sampleRate;
+                const format = 1; // PCM
+                const bitsPerSample = 16;
+                const blockAlign = numChannels * bitsPerSample / 8;
+                const byteRate = sampleRate * blockAlign;
+                const dataSize = buffer.length * blockAlign;
+                const bufferSize = 44 + dataSize;
+                const arrayBuffer = new ArrayBuffer(bufferSize);
+                const view = new DataView(arrayBuffer);
+
+                // WAV header
+                writeString(view, 0, 'RIFF');
+                view.setUint32(4, bufferSize - 8, true);
+                writeString(view, 8, 'WAVE');
+                writeString(view, 12, 'fmt ');
+                view.setUint32(16, 16, true);
+                view.setUint16(20, format, true);
+                view.setUint16(22, numChannels, true);
+                view.setUint32(24, sampleRate, true);
+                view.setUint32(28, byteRate, true);
+                view.setUint16(32, blockAlign, true);
+                view.setUint16(34, bitsPerSample, true);
+                writeString(view, 36, 'data');
+                view.setUint32(40, dataSize, true);
+
+                // Interleave channel data
+                let offset = 44;
+                const channelData = [];
+                for (let ch = 0; ch < numChannels; ch++) {
+                    channelData.push(buffer.getChannelData(ch));
+                }
+                for (let i = 0; i < buffer.length; i++) {
+                    for (let ch = 0; ch < numChannels; ch++) {
+                        let sample = channelData[ch][i];
+                        sample = Math.max(-1, Math.min(1, sample));
+                        view.setInt16(offset, sample < 0 ? sample * 0x8000 : sample * 0x7FFF, true);
+                        offset += 2;
+                    }
+                }
+                return new Blob([arrayBuffer], { type: 'audio/wav' });
+            }
+
+            function writeString(view, offset, str) {
+                for (let i = 0; i < str.length; i++) {
+                    view.setUint8(offset + i, str.charCodeAt(i));
+                }
+            }
+
+            // ─── Events ───
+            uploadZone.addEventListener('dragover', function(e) {
+                e.preventDefault();
+                this.classList.add('dragover');
+            });
+            uploadZone.addEventListener('dragleave', function(e) {
+                e.preventDefault();
+                this.classList.remove('dragover');
+            });
+            uploadZone.addEventListener('drop', function(e) {
+                e.preventDefault();
+                this.classList.remove('dragover');
+                const files = e.dataTransfer.files;
+                if (files.length > 0) loadAudioFile(files[0]);
+            });
+            fileInput.addEventListener('change', function() {
+                if (this.files.length > 0) loadAudioFile(this.files[0]);
+            });
+
+            btnPlay.addEventListener('click', togglePlayPause);
+            btnStop.addEventListener('click', function() {
+                stopPlayback();
+                playbackOffset = 0;
+                updateTimeDisplay();
+                updatePlayhead();
+            });
+            btnBypass.addEventListener('click', function() {
+                setBypass(!isBypassed);
+                if (!isBypassed) updateBandFilters();
+            });
+
+            document.querySelectorAll('.btn-preset').forEach(btn => {
+                btn.addEventListener('click', function() {
+                    applyPreset(this.dataset.preset);
+                });
+            });
+
+            waveformContainer.addEventListener('click', function(e) {
+                if (!audioBuffer) return;
+                const rect = this.getBoundingClientRect();
+                const x = e.clientX - rect.left;
+                const pct = Math.max(0, Math.min(1, x / rect.width));
+                playbackOffset = pct * audioBuffer.duration;
+                updatePlayhead();
+                updateTimeDisplay();
+                if (isPlaying) {
+                    startPlayback(playbackOffset);
+                }
+            });
+
+            window.addEventListener('resize', function() {
+                resizeCanvases();
+                drawWaveform();
+            });
+
+            window.addEventListener('keydown', function(e) {
+                if (!audioBuffer) return;
+                if (e.code === 'Space') {
+                    e.preventDefault();
+                    togglePlayPause();
+                } else if (e.code === 'KeyS') {
+                    e.preventDefault();
+                    setBypass(!isBypassed);
+                    if (!isBypassed) updateBandFilters();
+                }
+            });
+
+            window.addEventListener('load', function() {
+                resizeCanvases();
+            });
+
+            const observer = new ResizeObserver(function() {
+                resizeCanvases();
+                drawWaveform();
+            });
+            observer.observe(spectrumContainer);
+            observer.observe(waveformContainer);
+
+            console.log('🎧 Voice Separator Studio with Export loaded. Drop an MP3 to begin!');
+            console.log('💡 Use the ⬇ button on each band to download isolated WAV files.');
+        })();
+    </script>
+</body>
+</html>

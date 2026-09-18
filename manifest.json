@@ -1,0 +1,57 @@
+{
+  "name": "Documents Manager",
+  "short_name": "Docs Manager",
+  "description": "Browser-based document and audio tools — neural text-to-speech, voice separation, and more.",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "any",
+  "background_color": "#0f172a",
+  "theme_color": "#0f172a",
+  "lang": "en",
+  "dir": "ltr",
+  "categories": ["productivity", "utilities", "multimedia"],
+  "icons": [
+    {
+      "src": "assets/icons/icon-152x152.png",
+      "sizes": "152x152",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "assets/icons/icon-192x192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "assets/icons/icon-512x512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "Text To Speech",
+      "short_name": "TTS",
+      "description": "Turn text into downloadable MP3",
+      "url": "/dm_voiceStudio_TTS.html",
+      "icons": [{ "src": "assets/icons/icon-152x152.png", "sizes": "152x152" }]
+    },
+    {
+      "name": "Voice Separator",
+      "short_name": "Separator",
+      "description": "Split audio into 6 frequency bands",
+      "url": "/dm_voiceStudio_VS.html",
+      "icons": [{ "src": "assets/icons/icon-152x152.png", "sizes": "152x152" }]
+    },
+    {
+      "name": "Voice Studio",
+      "short_name": "Studio",
+      "description": "Audio tools hub",
+      "url": "/dm_voiceStudio.html",
+      "icons": [{ "src": "assets/icons/icon-152x152.png", "sizes": "152x152" }]
+    }
+  ]
+}

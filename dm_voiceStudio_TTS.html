@@ -1,0 +1,462 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <link rel="icon" href="data:,">
+  <title>Text To Speech · Voice Studio</title>
+  <style>
+    :root {
+      color-scheme: dark;
+      --bg-1: #0f172a;
+      --bg-2: #1e293b;
+      --surface: #334155;
+      --border: #3f4d63;
+      --text: #e2e8f0;
+      --muted: #94a3b8;
+      --accent: #38bdf8;
+      --accent-hover: #7dd3fc;
+      --ok: #4ade80;
+      --err: #f87171;
+      --warn: #fbbf24;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      padding: 2.5rem 1rem;
+      display: flex;
+      justify-content: center;
+      align-items: flex-start;
+      font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+      color: var(--text);
+      background:
+        radial-gradient(900px 500px at 50% -10%, #1e293b, transparent 70%),
+        var(--bg-1);
+    }
+
+    .app {
+      width: 100%;
+      max-width: 720px;
+      background: rgba(30, 41, 59, .72);
+      border: 1px solid var(--border);
+      border-radius: 18px;
+      padding: 1.75rem;
+      box-shadow: 0 24px 60px rgba(0, 0, 0, .45);
+      backdrop-filter: blur(10px);
+    }
+
+    h1 {
+      margin: 0 0 .3rem;
+      font-size: 1.45rem;
+      letter-spacing: -.02em;
+    }
+    .subtitle {
+      margin: 0 0 1.5rem;
+      font-size: .88rem;
+      color: var(--muted);
+    }
+
+    /* ---------- controls ---------- */
+    .controls {
+      display: grid;
+      grid-template-columns: 1.1fr 1fr 1.4fr;
+      gap: .75rem;
+      margin-bottom: 1.1rem;
+    }
+    @media (max-width: 580px) {
+      .controls { grid-template-columns: 1fr; }
+    }
+
+    .field { display: flex; flex-direction: column; gap: .4rem; min-width: 0; }
+
+    .field label {
+      font-size: .72rem;
+      font-weight: 700;
+      letter-spacing: .07em;
+      text-transform: uppercase;
+      color: var(--muted);
+    }
+
+    select, textarea {
+      width: 100%;
+      font: inherit;
+      font-size: .95rem;
+      color: var(--text);
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: .62rem .75rem;
+      outline: none;
+      transition: border-color .15s, box-shadow .15s;
+    }
+    select:focus, textarea:focus {
+      border-color: var(--accent);
+      box-shadow: 0 0 0 3px rgba(56, 189, 248, .16);
+    }
+
+    select {
+      appearance: none;
+      cursor: pointer;
+      padding-right: 2.1rem;
+      background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'><path d='M2.5 4.5 6 8l3.5-3.5' fill='none' stroke='%2394a3b8' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'/></svg>");
+      background-repeat: no-repeat;
+      background-position: right .75rem center;
+      text-overflow: ellipsis;
+    }
+
+    textarea {
+      min-height: 150px;
+      resize: vertical;
+      line-height: 1.55;
+    }
+    textarea::placeholder { color: #64748b; }
+
+    .meta {
+      display: flex;
+      justify-content: space-between;
+      gap: 1rem;
+      margin-top: .45rem;
+      font-size: .78rem;
+      color: var(--muted);
+    }
+    .meta .warn { color: var(--warn); }
+
+    /* ---------- buttons ---------- */
+    .actions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: .6rem;
+      margin-top: 1.1rem;
+    }
+
+    button {
+      font: inherit;
+      font-weight: 600;
+      font-size: .95rem;
+      border-radius: 10px;
+      border: 1px solid transparent;
+      padding: .68rem 1.15rem;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: .45rem;
+      transition: background .15s, border-color .15s, opacity .15s, transform .08s;
+    }
+    button:active:not(:disabled) { transform: translateY(1px); }
+    button:disabled { opacity: .4; cursor: not-allowed; }
+
+    .btn-primary { background: var(--accent); color: #06263a; }
+    .btn-primary:hover:not(:disabled) { background: var(--accent-hover); }
+
+    .btn-ghost {
+      background: transparent;
+      color: var(--text);
+      border-color: var(--border);
+    }
+    .btn-ghost:hover:not(:disabled) { background: var(--surface); }
+
+    .spinner {
+      width: 13px;
+      height: 13px;
+      border: 2px solid currentColor;
+      border-top-color: transparent;
+      border-radius: 50%;
+      animation: spin .7s linear infinite;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* ---------- output ---------- */
+    audio {
+      width: 100%;
+      margin-top: 1.1rem;
+      border-radius: 10px;
+    }
+
+    .status {
+      margin-top: .85rem;
+      min-height: 1.2em;
+      font-size: .88rem;
+      color: var(--muted);
+    }
+	.crumbs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: .4rem;
+  align-items: center;
+  font-size: .8rem;
+  color: var(--muted);
+  margin-bottom: 1rem;
+}
+.crumbs a {
+  color: var(--muted);
+  text-decoration: none;
+  transition: color .15s;
+}
+.crumbs a:hover { color: var(--accent); }
+.crumbs .current { color: var(--text); }
+    .status.ok  { color: var(--ok); }
+    .status.err { color: var(--err); }
+  </style>
+</head>
+<body>
+  <main class="app">
+    <nav class="crumbs">
+      <a href="index.html">Documents Manager</a>
+      <span>/</span>
+      <a href="dm_voiceStudio.html">Voice Studio</a>
+      <span>/</span>
+      <span class="current">Text To Speech</span>
+    </nav>
+
+    <h1>Text To Speech</h1>
+    <p class="subtitle">Neural voices · no signup · runs on Netlify Functions</p>
+
+    <div class="controls">
+      <div class="field">
+        <label for="lang">Language</label>
+        <select id="lang"></select>
+      </div>
+      <div class="field">
+        <label for="gender">Gender</label>
+        <select id="gender">
+          <option value="all">All</option>
+          <option value="female">Female</option>
+          <option value="male">Male</option>
+        </select>
+      </div>
+      <div class="field">
+        <label for="voice">Voice</label>
+        <select id="voice"></select>
+      </div>
+    </div>
+
+    <div class="field">
+      <label for="text">Text</label>
+      <textarea id="text" dir="auto" placeholder="Type or paste your text…"></textarea>
+      <div class="meta">
+        <span id="hint"></span>
+        <span><span id="count">0</span> characters</span>
+      </div>
+    </div>
+
+    <div class="actions">
+      <button id="playBtn" class="btn-primary" disabled>▶ Play</button>
+      <button id="downloadBtn" class="btn-ghost" disabled>⬇ Download MP3</button>
+    </div>
+
+    <audio id="player" controls></audio>
+    <div id="status" class="status"></div>
+  </main>
+
+  <script>
+    /* ------------------------------------------------------------------
+       Voice catalogue — add or remove entries freely.
+       The dropdowns build themselves from this object.
+    ------------------------------------------------------------------ */
+    const VOICES = {
+      en: {
+        label: "English",
+        voices: [
+          { id: "en-US-BrianNeural",    name: "Brian",    region: "US", gender: "male"   },
+          { id: "en-US-GuyNeural",      name: "Guy",      region: "US", gender: "male"   },
+          { id: "en-US-RogerNeural",    name: "Roger",    region: "US", gender: "male"   },
+          { id: "en-US-AriaNeural",     name: "Aria",     region: "US", gender: "female" },
+          { id: "en-US-JennyNeural",    name: "Jenny",    region: "US", gender: "female" },
+          { id: "en-US-MichelleNeural", name: "Michelle", region: "US", gender: "female" },
+          { id: "en-GB-RyanNeural",     name: "Ryan",     region: "UK", gender: "male"   },
+          { id: "en-GB-SoniaNeural",    name: "Sonia",    region: "UK", gender: "female" },
+          { id: "en-GB-LibbyNeural",    name: "Libby",    region: "UK", gender: "female" },
+          { id: "en-AU-WilliamNeural",  name: "William",  region: "AU", gender: "male"   },
+          { id: "en-AU-NatashaNeural",  name: "Natasha",  region: "AU", gender: "female" },
+          { id: "en-CA-LiamNeural",     name: "Liam",     region: "CA", gender: "male"   },
+          { id: "en-CA-ClaraNeural",    name: "Clara",    region: "CA", gender: "female" }
+        ]
+      },
+      fr: {
+        label: "Français",
+        voices: [
+          { id: "fr-FR-HenriNeural",    name: "Henri",    region: "FR", gender: "male"   },
+          { id: "fr-FR-DeniseNeural",   name: "Denise",   region: "FR", gender: "female" },
+          { id: "fr-FR-EloiseNeural",   name: "Éloïse",   region: "FR", gender: "female" },
+          { id: "fr-CA-AntoineNeural",  name: "Antoine",  region: "CA", gender: "male"   },
+          { id: "fr-CA-JeanNeural",     name: "Jean",     region: "CA", gender: "male"   },
+          { id: "fr-CA-SylvieNeural",   name: "Sylvie",   region: "CA", gender: "female" }
+        ]
+      },
+      ar: {
+        label: "العربية",
+        voices: [
+          { id: "ar-EG-ShakirNeural",   name: "Shakir",   region: "EG", gender: "male"   },
+          { id: "ar-EG-SalmaNeural",    name: "Salma",    region: "EG", gender: "female" },
+          { id: "ar-SA-HamedNeural",    name: "Hamed",    region: "SA", gender: "male"   },
+          { id: "ar-SA-ZariyahNeural",  name: "Zariyah",  region: "SA", gender: "female" },
+          { id: "ar-AE-HamdanNeural",   name: "Hamdan",   region: "AE", gender: "male"   },
+          { id: "ar-AE-FatimaNeural",   name: "Fatima",   region: "AE", gender: "female" }
+        ]
+      }
+    };
+
+    const KEY = {
+      lang:   "tts.lang",
+      gender: "tts.gender",
+      text:   "tts.text",
+      voice:  (lang) => `tts.voice.${lang}`
+    };
+
+    const el = {
+      lang:     document.getElementById("lang"),
+      gender:   document.getElementById("gender"),
+      voice:    document.getElementById("voice"),
+      text:     document.getElementById("text"),
+      play:     document.getElementById("playBtn"),
+      download: document.getElementById("downloadBtn"),
+      player:   document.getElementById("player"),
+      status:   document.getElementById("status"),
+      count:    document.getElementById("count"),
+      hint:     document.getElementById("hint")
+    };
+
+    const cap = (s) => s.charAt(0).toUpperCase() + s.slice(1);
+
+    function setStatus(msg, kind) {
+      el.status.textContent = msg;
+      el.status.className = "status" + (kind ? " " + kind : "");
+    }
+
+    /* ---------- build language dropdown ---------- */
+    el.lang.innerHTML = Object.entries(VOICES)
+      .map(([code, cfg]) => `<option value="${code}">${cfg.label}</option>`)
+      .join("");
+
+    /* ---------- filtering ---------- */
+    function refreshVoices() {
+      const lang = el.lang.value;
+      const gender = el.gender.value;
+      const pool = VOICES[lang].voices;
+      const filtered = gender === "all"
+        ? pool
+        : pool.filter(v => v.gender === gender);
+
+      const saved = localStorage.getItem(KEY.voice(lang));
+      const chosen = filtered.find(v => v.id === saved) || filtered[0];
+
+      el.voice.innerHTML = filtered
+        .map(v => `<option value="${v.id}">${v.name} · ${v.region} · ${cap(v.gender)}</option>`)
+        .join("");
+      el.voice.value = chosen.id;
+
+      // RTL for Arabic, LTR otherwise
+      el.text.dir = lang === "ar" ? "rtl" : "ltr";
+      document.documentElement.lang = lang;
+    }
+
+    function updateMeta() {
+      const n = el.text.value.length;
+      el.count.textContent = n;
+      el.count.classList.toggle("warn", n > 200);
+
+      const hasText = el.text.value.trim().length > 0;
+      el.play.disabled = !hasText;
+      el.download.disabled = !hasText;
+
+      
+    }
+
+    /* ---------- restore persisted state ---------- */
+    (function init() {
+      const savedLang = localStorage.getItem(KEY.lang);
+      if (savedLang && VOICES[savedLang]) el.lang.value = savedLang;
+
+      const savedGender = localStorage.getItem(KEY.gender);
+      if (savedGender) el.gender.value = savedGender;
+
+      const savedText = localStorage.getItem(KEY.text);
+      if (savedText !== null) el.text.value = savedText;
+
+      refreshVoices();
+      updateMeta();
+    })();
+
+    /* ---------- events ---------- */
+    el.lang.addEventListener("change", () => {
+      localStorage.setItem(KEY.lang, el.lang.value);
+      refreshVoices();
+    });
+
+    el.gender.addEventListener("change", () => {
+      localStorage.setItem(KEY.gender, el.gender.value);
+      refreshVoices();
+    });
+
+    el.voice.addEventListener("change", () => {
+      localStorage.setItem(KEY.voice(el.lang.value), el.voice.value);
+    });
+
+    el.text.addEventListener("input", () => {
+      localStorage.setItem(KEY.text, el.text.value);
+      updateMeta();
+    });
+
+    /* ---------- api ---------- */
+    /* ---------- api (POST — no URL length limit) ---------- */
+async function fetchAudio() {
+  const text = el.text.value.trim();
+  const voice = el.voice.value;
+  const res = await fetch("/api/tts", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ voice, text }),
+  });
+  if (!res.ok) throw new Error("HTTP " + res.status);
+  return await res.blob();
+}
+
+el.play.addEventListener("click", async () => {
+  if (!el.text.value.trim()) return;
+  setStatus("Generating audio…");
+  el.play.disabled = true;
+  try {
+    const blob = await fetchAudio();
+    if (el.player.src) URL.revokeObjectURL(el.player.src);
+    el.player.src = URL.createObjectURL(blob);
+    await el.player.play();
+    setStatus("");
+  } catch (e) {
+    setStatus("Playback failed: " + e.message + " — try Download.", "err");
+  } finally {
+    el.play.disabled = false;
+  }
+});
+
+el.download.addEventListener("click", async () => {
+  if (!el.text.value.trim()) return;
+
+  el.download.disabled = true;
+  const original = el.download.innerHTML;
+  el.download.innerHTML = '<span class="spinner"></span> Generating…';
+  setStatus("Generating MP3…");
+
+  try {
+    const blob = await fetchAudio();
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `speech-${el.voice.value}.mp3`;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(url);
+    setStatus("Downloaded ✅", "ok");
+  } catch (e) {
+    setStatus("Error: " + e.message, "err");
+  } finally {
+    el.download.innerHTML = original;
+    el.download.disabled = !el.text.value.trim();
+  }
+});
+  </script>
+</body>
+</html>
