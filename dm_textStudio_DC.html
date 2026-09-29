@@ -1,0 +1,1243 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="icon" href="data:,">
+<title>Document Collector · Text Studio</title>
+<style>
+:root {
+  color-scheme: dark;
+  --bg: #0f172a;
+  --surface: #334155;
+  --surface-2: #3b4a60;
+  --border: #3f4d63;
+  --text: #e2e8f0;
+  --muted: #94a3b8;
+  --accent: #38bdf8;
+  --accent-hover: #7dd3fc;
+  --danger: #f87171;
+  --ok: #4ade80;
+  --warn: #fbbf24;
+}
+* { box-sizing: border-box; }
+body {
+  margin: 0;
+  min-height: 100vh;
+  padding: 2rem 1rem;
+  display: flex;
+  justify-content: center;
+  align-items: flex-start;
+  font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  color: var(--text);
+  background:
+    radial-gradient(900px 500px at 50% -10%, #1e293b, transparent 70%),
+    var(--bg);
+}
+.app {
+  width: 100%;
+  max-width: 1000px;
+  background: rgba(30, 41, 59, .72);
+  border: 1px solid var(--border);
+  border-radius: 18px;
+  padding: 1.75rem;
+  box-shadow: 0 24px 60px rgba(0, 0, 0, .45);
+  backdrop-filter: blur(10px);
+}
+.crumbs {
+  display: flex; flex-wrap: wrap; gap: .4rem; align-items: center;
+  font-size: .8rem; color: var(--muted); margin-bottom: 1rem;
+}
+.crumbs a { color: var(--muted); text-decoration: none; transition: color .15s; }
+.crumbs a:hover { color: var(--accent); }
+.crumbs .current { color: var(--text); }
+h1 { margin: 0 0 .3rem; font-size: 1.45rem; letter-spacing: -.02em; }
+.subtitle { margin: 0 0 1.25rem; font-size: .88rem; color: var(--muted); }
+
+/* ---- upload ---- */
+.upload-zone {
+  border: 2px dashed var(--border);
+  border-radius: 12px;
+  padding: 1.75rem 1.5rem;
+  text-align: center;
+  transition: border-color .2s, background .2s;
+  background: rgba(15, 23, 42, .4);
+  cursor: pointer;
+}
+.upload-zone:hover, .upload-zone.dragover {
+  border-color: var(--accent);
+  background: rgba(56, 189, 248, .06);
+}
+.upload-zone .icon { font-size: 2rem; margin-bottom: .35rem; }
+.upload-zone .text { font-size: 1rem; font-weight: 500; }
+.upload-zone .hint { font-size: .8rem; color: var(--muted); margin-top: .3rem; }
+.upload-actions {
+  display: flex; flex-wrap: wrap; gap: .5rem; justify-content: center;
+  margin-top: .9rem;
+}
+.upload-zone input[type="file"] { display: none; }
+
+/* ---- buttons ---- */
+.btn {
+  font: inherit;
+  font-size: .82rem;
+  font-weight: 600;
+  padding: .45rem .85rem;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--text);
+  cursor: pointer;
+  transition: background .15s, border-color .15s, color .15s, transform .06s;
+  display: inline-flex;
+  align-items: center;
+  gap: .35rem;
+  white-space: nowrap;
+}
+.btn:hover:not(:disabled) {
+  background: var(--surface-2);
+  border-color: var(--accent);
+  color: var(--accent);
+}
+.btn:active:not(:disabled) { transform: translateY(1px); }
+.btn:disabled { opacity: .35; cursor: not-allowed; }
+.btn.primary {
+  background: var(--accent);
+  color: #06263a;
+  border-color: var(--accent);
+}
+.btn.primary:hover:not(:disabled) {
+  background: var(--accent-hover);
+  color: #06263a;
+  border-color: var(--accent-hover);
+}
+.btn.danger:hover:not(:disabled) { border-color: var(--danger); color: var(--danger); }
+
+/* ---- options ---- */
+.options {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+  gap: .8rem 1.1rem;
+  padding: 1rem 1.1rem;
+  background: rgba(15, 23, 42, .4);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  margin-top: 1rem;
+}
+.opt { display: flex; flex-direction: column; gap: .35rem; min-width: 0; }
+.opt > label.title {
+  font-size: .7rem;
+  font-weight: 700;
+  letter-spacing: .07em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+.opt select, .opt input[type="text"] {
+  width: 100%;
+  font: inherit;
+  font-size: .85rem;
+  color: var(--text);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: .45rem .6rem;
+  outline: none;
+  transition: border-color .15s, box-shadow .15s;
+}
+.opt select:focus, .opt input[type="text"]:focus {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px rgba(56, 189, 248, .16);
+}
+.opt select {
+  cursor: pointer;
+  appearance: none;
+  padding-right: 1.9rem;
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'><path d='M2.5 4.5 6 8l3.5-3.5' fill='none' stroke='%2394a3b8' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'/></svg>");
+  background-repeat: no-repeat;
+  background-position: right .6rem center;
+}
+.check {
+  display: flex;
+  align-items: flex-start;
+  gap: .5rem;
+  font-size: .82rem;
+  line-height: 1.45;
+  cursor: pointer;
+  user-select: none;
+}
+.check input { accent-color: var(--accent); margin-top: .15rem; flex-shrink: 0; }
+.check span small { display: block; color: var(--muted); font-size: .75rem; }
+
+/* ---- totals + preview ---- */
+.totals {
+  display: none;
+  margin-top: 1rem;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: rgba(15, 23, 42, .4);
+  overflow: hidden;
+}
+.totals.open { display: block; }
+.stats-bar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: .5rem;
+  padding: .7rem .85rem;
+  border-bottom: 1px solid var(--border);
+}
+.stat {
+  display: flex;
+  align-items: baseline;
+  gap: .4rem;
+  padding: .3rem .7rem;
+  border-radius: 999px;
+  background: rgba(56, 189, 248, .08);
+  border: 1px solid rgba(56, 189, 248, .22);
+  font-size: .78rem;
+}
+.stat .k { color: var(--muted); }
+.stat .v { font-weight: 700; color: var(--accent); font-variant-numeric: tabular-nums; }
+.stat.plain {
+  background: rgba(148, 163, 184, .08);
+  border-color: rgba(148, 163, 184, .2);
+}
+.stat.plain .v { color: var(--text); }
+
+.preview-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: .75rem;
+  padding: .55rem .85rem .35rem;
+}
+.preview-title {
+  font-size: .7rem;
+  font-weight: 700;
+  letter-spacing: .07em;
+  text-transform: uppercase;
+  color: var(--muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  min-width: 0;
+}
+.preview-back {
+  font: inherit;
+  font-size: .72rem;
+  font-weight: 600;
+  padding: .18rem .55rem;
+  border-radius: 6px;
+  border: 1px solid var(--border);
+  background: transparent;
+  color: var(--accent);
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: background .15s, border-color .15s;
+}
+.preview-back:hover {
+  background: rgba(56, 189, 248, .1);
+  border-color: var(--accent);
+}
+.preview-back[hidden] { display: none; }
+
+.preview {
+  margin: 0 .85rem .85rem;
+  padding: .75rem .85rem;
+  max-height: 260px;
+  overflow: auto;
+  background: #050510;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: .74rem;
+  line-height: 1.5;
+  color: #b9c6dc;
+  white-space: pre;
+  tab-size: 4;
+}
+.preview-empty { color: var(--muted); font-style: italic; }
+
+/* ---- file list ---- */
+.list-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: .75rem;
+  margin: 1.25rem 0 .5rem;
+}
+.list-head h2 {
+  margin: 0;
+  font-size: .72rem;
+  font-weight: 700;
+  letter-spacing: .07em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+.file-list {
+  display: flex;
+  flex-direction: column;
+  gap: .3rem;
+  max-height: 340px;
+  overflow-y: auto;
+  padding-right: .25rem;
+}
+.file-row {
+  display: flex;
+  align-items: center;
+  gap: .6rem;
+  padding: .45rem .65rem;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  font-size: .8rem;
+  cursor: pointer;
+  transition: background .15s, border-color .15s;
+}
+.file-row:hover { background: var(--surface-2); }
+.file-row.active {
+  border-color: var(--accent);
+  background: rgba(56, 189, 248, .08);
+}
+.file-row .idx {
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+  min-width: 2.2em;
+  text-align: right;
+  flex-shrink: 0;
+}
+.file-row .file-icon {
+  flex-shrink: 0;
+  width: 1.5em;
+  text-align: center;
+  font-size: 1.1rem;
+  line-height: 1;
+}
+.file-row .meta { flex: 1; min-width: 0; }
+.file-row .fname-line {
+  display: flex;
+  align-items: center;
+  gap: .4rem;
+  min-width: 0;
+}
+.file-row .fname {
+  font-weight: 600;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.file-row .badge-ext {
+  flex-shrink: 0;
+  font-size: .62rem;
+  font-weight: 700;
+  letter-spacing: .05em;
+  text-transform: uppercase;
+  padding: .1rem .38rem;
+  border-radius: 4px;
+  background: rgba(56, 189, 248, .12);
+  color: var(--accent);
+}
+.file-row .fpath {
+  color: var(--muted);
+  font-size: .72rem;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.file-row .figures {
+  flex-shrink: 0;
+  font-size: .72rem;
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+  min-width: 6.5em;
+}
+.file-row .remove {
+  flex-shrink: 0;
+  font: inherit;
+  font-size: .8rem;
+  line-height: 1;
+  padding: .25rem .45rem;
+  border-radius: 6px;
+  border: 1px solid transparent;
+  background: transparent;
+  color: var(--muted);
+  cursor: pointer;
+  transition: color .15s, border-color .15s, background .15s;
+}
+.file-row .remove:hover {
+  color: var(--danger);
+  border-color: var(--danger);
+  background: rgba(248, 113, 113, .1);
+}
+.empty-list {
+  padding: 1.5rem;
+  text-align: center;
+  font-size: .82rem;
+  color: var(--muted);
+  border: 1px dashed var(--border);
+  border-radius: 10px;
+}
+
+/* ---- footer actions ---- */
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: .55rem;
+  margin-top: 1.25rem;
+}
+.actions .spacer { flex: 1; }
+
+.status {
+  margin-top: .6rem;
+  font-size: .82rem;
+  color: var(--muted);
+  min-height: 1.2em;
+}
+.status.ok { color: var(--ok); }
+.status.err { color: var(--danger); }
+.status.warn { color: var(--warn); }
+
+details.help {
+  margin-top: 1rem;
+  font-size: .78rem;
+  color: var(--muted);
+}
+details.help summary {
+  cursor: pointer;
+  color: var(--accent);
+  font-size: .8rem;
+}
+details.help code {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: .95em;
+  color: var(--text);
+  background: rgba(148, 163, 184, .12);
+  padding: .05rem .3rem;
+  border-radius: 4px;
+}
+
+.back-link {
+  display: inline-block;
+  margin-top: 1.25rem;
+  font-size: .88rem;
+  color: var(--accent);
+  text-decoration: none;
+}
+.back-link:hover { text-decoration: underline; }
+
+@media (max-width: 640px) {
+  .app { padding: 1.1rem; }
+  .file-row .figures { display: none; }
+}
+</style>
+</head>
+<body>
+<main class="app">
+  <nav class="crumbs">
+    <a href="index.html">Documents Manager</a>
+    <span>/</span>
+    <a href="dm_textStudio.html">Text Studio</a>
+    <span>/</span>
+    <span class="current">Document Collector</span>
+  </nav>
+
+  <h1>Document Collector</h1>
+  <p class="subtitle">Gather text files from a folder or a drag-and-drop, then combine them into a single file that keeps each document's name, path, and size.</p>
+
+  <!-- ---------- upload ---------- -->
+  <div class="upload-zone" id="uploadZone">
+    <div class="icon">🗂️</div>
+    <div class="text">Drop files or a folder here</div>
+    <div class="hint">Everything is read in your browser — nothing is uploaded.</div>
+    <div class="upload-actions">
+      <button type="button" class="btn" id="addFilesBtn">📄 Add files</button>
+      <button type="button" class="btn" id="addFolderBtn">📁 Add folder</button>
+    </div>
+    <input type="file" id="fileInput" multiple>
+    <input type="file" id="dirInput" webkitdirectory directory multiple>
+  </div>
+
+  <!-- ---------- options ---------- -->
+  <div class="options">
+    <label class="check">
+      <input type="checkbox" id="optStripEmpty">
+      <span>Remove empty lines
+        <small>Drops blank and whitespace-only lines from each document's content.</small>
+      </span>
+    </label>
+
+    <label class="check">
+      <input type="checkbox" id="optIncludePath" checked>
+      <span>Include file paths
+        <small>Adds a <code>path:</code> line to each header. Size and type are always included.</small>
+      </span>
+    </label>
+
+    <label class="check">
+      <input type="checkbox" id="optAcceptAll">
+      <span>Accept any file type
+        <small>Skips the extension filter. Binary files are still detected and skipped.</small>
+      </span>
+    </label>
+
+    <label class="check">
+      <input type="checkbox" id="optShowTotals" checked>
+      <span>Show totals &amp; preview
+        <small>Total lines, total size, and a preview pane. Click a file below to preview it.</small>
+      </span>
+    </label>
+
+    <div class="opt">
+      <label class="title" for="optSort">Sort order</label>
+      <select id="optSort">
+        <option value="added">Order added</option>
+        <option value="path">Path (A → Z)</option>
+        <option value="name">Name (A → Z)</option>
+        <option value="size-desc">Size (largest first)</option>
+        <option value="size-asc">Size (smallest first)</option>
+      </select>
+    </div>
+
+    <div class="opt">
+      <label class="title" for="optFilename">Output filename</label>
+      <input type="text" id="optFilename" spellcheck="false">
+    </div>
+  </div>
+
+  <!-- ---------- totals + preview ---------- -->
+  <div class="totals" id="totalsPanel">
+    <div class="stats-bar">
+      <span class="stat plain"><span class="k">Files</span><span class="v" id="statFiles">0</span></span>
+      <span class="stat"><span class="k">Lines</span><span class="v" id="statLines">0</span></span>
+      <span class="stat"><span class="k">Size</span><span class="v" id="statSize">0 B</span></span>
+      <span class="stat plain"><span class="k">Source</span><span class="v" id="statSource">0 B</span></span>
+    </div>
+    <div class="preview-header">
+      <span class="preview-title" id="previewTitle">Preview — Combined output</span>
+      <button type="button" class="preview-back" id="previewBack" hidden>← Back to combined</button>
+    </div>
+    <pre class="preview" id="preview">No files collected yet.</pre>
+  </div>
+
+  <!-- ---------- file list ---------- -->
+  <div class="list-head">
+    <h2>Collected files</h2>
+    <button type="button" class="btn danger" id="clearBtn" disabled>Clear all</button>
+  </div>
+  <div class="file-list" id="fileList">
+    <div class="empty-list">No files yet — add files or drop a folder above.</div>
+  </div>
+
+  <!-- ---------- actions ---------- -->
+  <div class="actions">
+    <button type="button" class="btn primary" id="downloadBtn" disabled>⬇ Combine &amp; download</button>
+    <span class="spacer"></span>
+  </div>
+  <div class="status" id="status"></div>
+
+  <details class="help">
+    <summary>Accepted file types</summary>
+    <p style="line-height:1.6;margin:.5rem 0 0;">
+      <code>.txt</code> <code>.md</code> <code>.markdown</code> <code>.rst</code> <code>.tex</code>
+      <code>.js</code> <code>.mjs</code> <code>.cjs</code> <code>.ts</code> <code>.jsx</code> <code>.tsx</code>
+      <code>.css</code> <code>.scss</code> <code>.html</code> <code>.htm</code> <code>.xml</code>
+      <code>.json</code> <code>.yml</code> <code>.yaml</code> <code>.toml</code> <code>.ini</code>
+      <code>.cfg</code> <code>.conf</code> <code>.lua</code> <code>.py</code> <code>.rb</code>
+      <code>.php</code> <code>.sh</code> <code>.bat</code> <code>.ps1</code> <code>.c</code>
+      <code>.h</code> <code>.cpp</code> <code>.cs</code> <code>.java</code> <code>.kt</code>
+      <code>.go</code> <code>.rs</code> <code>.sql</code> <code>.csv</code> <code>.srt</code>
+      <code>.vtt</code> <code>.log</code> <code>.map</code> <code>.wesnoth</code>
+      <code>.gitignore</code> <code>.gitattributes</code> <code>.env</code> <code>.editorconfig</code>
+      <code>Makefile</code> <code>Dockerfile</code> <code>LICENSE</code> <code>README</code>
+      — or tick <em>Accept any file type</em>.
+    </p>
+  </details>
+
+  <a href="dm_textStudio.html" class="back-link">← Back to Text Studio</a>
+</main>
+
+<script>
+(function () {
+  'use strict';
+
+  // ─── Config ───
+  const MAX_FILE_BYTES = 5 * 1024 * 1024;   // per-file ceiling
+  const PREVIEW_CHARS  = 4000;
+  const RULE = '='.repeat(64);
+
+  const ACCEPTED_EXT = new Set([
+    'txt','md','markdown','rst','tex','log','csv','tsv','srt','vtt',
+    'js','mjs','cjs','ts','jsx','tsx','json','json5',
+    'css','scss','sass','less',
+    'html','htm','xhtml','xml','svg',
+    'yml','yaml','toml','ini','cfg','conf','properties','env',
+    'lua','py','rb','php','pl','sh','bash','zsh','bat','cmd','ps1',
+    'c','h','cc','cpp','hpp','cs','java','kt','kts','go','rs','swift',
+    'sql','r','m','vim','wesnoth','map','po','pot'
+  ]);
+
+  // Dotfiles and extensionless names need explicit handling — the
+  // generic extension splitter gets these wrong or returns nothing.
+  const SPECIAL_NAMES = new Set([
+    '.gitignore','.gitattributes','.gitmodules','.gitkeep',
+    '.env','.editorconfig','.npmrc','.nvmrc','.prettierrc',
+    '.eslintrc','.babelrc','.dockerignore',
+    'makefile','dockerfile','license','readme','changelog','procfile'
+  ]);
+
+  // Icons are grouped by category, not by extension. A .py and a .rb
+  // share one if they belong to the same visual family; the badge
+  // carries the literal extension when that distinction matters.
+  const EXT_ICONS = {
+    // Scripting / code
+    js:'📜', mjs:'📜', cjs:'📜', ts:'📜', jsx:'📜', tsx:'📜',
+    py:'🐍', rb:'💎', php:'🐘', go:'🐹', rs:'🦀', swift:'🦅',
+    java:'☕', kt:'🎯', kts:'🎯', cs:'🎯', c:'⚙️', h:'⚙️',
+    cc:'⚙️', cpp:'⚙️', hpp:'⚙️', lua:'🌙', pl:'🐪',
+    // Web
+    html:'🌐', htm:'🌐', xhtml:'🌐',
+    css:'🎨', scss:'🎨', sass:'🎨', less:'🎨', svg:'🎨',
+    // Data / config
+    json:'🔣', json5:'🔣',
+    yml:'⚙️', yaml:'⚙️', toml:'⚙️', ini:'⚙️',
+    cfg:'⚙️', conf:'⚙️', properties:'⚙️', env:'🔐',
+    xml:'📋', csv:'📊', tsv:'📊',
+    // Docs
+    txt:'📝', md:'📝', markdown:'📝', rst:'📝', tex:'📝',
+    log:'📜', srt:'💬', vtt:'💬',
+    // Shell
+    sh:'🐚', bash:'🐚', zsh:'🐚', bat:'🪟', cmd:'🪟', ps1:'🪟',
+    // Misc
+    sql:'🗃️', r:'📊', m:'📐', vim:'💚', wesnoth:'🏰', map:'🗺️',
+    po:'🌐', pot:'🌐',
+    // Special names (via SPECIAL_NAMES → ext)
+    gitignore:'🚫', gitattributes:'📎', gitmodules:'📎', gitkeep:'📌',
+    editorconfig:'⚙️', npmrc:'📦', nvmrc:'📦',
+    prettierrc:'✨', eslintrc:'✨', babelrc:'✨', dockerignore:'🚫',
+    makefile:'🔨', dockerfile:'🐳', license:'⚖️',
+    readme:'📖', changelog:'📖', procfile:'🚂',
+  };
+
+  const BINARY_SNIFF_CHARS = 2000;
+
+  // ─── State ───
+  const files = [];          // { path, name, ext, size, text, lines }
+  const skipped = [];        // paths rejected during collection
+  let previewingPath = null; // null → combined preview; else single-file
+  let busy = false;
+  let renderQueued = false;
+
+  // ─── DOM ───
+  const $ = (id) => document.getElementById(id);
+  const uploadZone  = $('uploadZone');
+  const fileInput   = $('fileInput');
+  const dirInput    = $('dirInput');
+  const addFilesBtn = $('addFilesBtn');
+  const addFolderBtn= $('addFolderBtn');
+
+  const optStripEmpty   = $('optStripEmpty');
+  const optIncludePath  = $('optIncludePath');
+  const optAcceptAll    = $('optAcceptAll');
+  const optShowTotals   = $('optShowTotals');
+  const optSort         = $('optSort');
+  const optFilename     = $('optFilename');
+
+  const totalsPanel = $('totalsPanel');
+  const statFiles   = $('statFiles');
+  const statLines   = $('statLines');
+  const statSize    = $('statSize');
+  const statSource  = $('statSource');
+  const previewTitle= $('previewTitle');
+  const previewBack = $('previewBack');
+  const preview     = $('preview');
+
+  const fileList    = $('fileList');
+  const clearBtn    = $('clearBtn');
+  const downloadBtn = $('downloadBtn');
+  const statusEl    = $('status');
+
+  // ─── Helpers ───
+  function setStatus(msg, kind) {
+    statusEl.textContent = msg || '';
+    statusEl.className = 'status' + (kind ? ' ' + kind : '');
+  }
+
+  function formatBytes(n) {
+    if (!isFinite(n) || n < 0) n = 0;
+    if (n < 1024) return n + ' B';
+    const units = ['KB', 'MB', 'GB'];
+    let v = n / 1024;
+    let i = 0;
+    while (v >= 1024 && i < units.length - 1) { v /= 1024; i++; }
+    return (v < 10 ? v.toFixed(2) : v.toFixed(1)) + ' ' + units[i];
+  }
+
+  function defaultFilename() {
+    const d = new Date();
+    const p = (x) => String(x).padStart(2, '0');
+    return 'combined-' + d.getFullYear() + p(d.getMonth() + 1) + p(d.getDate()) +
+           '-' + p(d.getHours()) + p(d.getMinutes()) + '.txt';
+  }
+
+  // '.gitignore' → 'gitignore' (via SPECIAL_NAMES), 'main.cfg' → 'cfg',
+  // 'Makefile' → '' (caught by SPECIAL_NAMES before we get here).
+  function extOf(name) {
+    const lower = name.toLowerCase();
+    if (SPECIAL_NAMES.has(lower)) return lower.replace(/^\./, '');
+    const i = lower.lastIndexOf('.');
+    if (i <= 0) return '';
+    return lower.slice(i + 1);
+  }
+
+  function iconFor(ext) {
+    return EXT_ICONS[ext] || '📄';
+  }
+
+  function isAccepted(name) {
+    if (optAcceptAll.checked) return true;
+    const lower = name.toLowerCase();
+    if (SPECIAL_NAMES.has(lower)) return true;
+    return ACCEPTED_EXT.has(extOf(name));
+  }
+
+  // A NUL byte in the first couple of KB is a reliable binary tell.
+  function looksBinary(text) {
+    const n = Math.min(text.length, BINARY_SNIFF_CHARS);
+    for (let i = 0; i < n; i++) {
+      if (text.charCodeAt(i) === 0) return true;
+    }
+    return false;
+  }
+
+  function padRight(s, len) {
+    while (s.length < len) s += ' ';
+    return s;
+  }
+
+  // ─── Collection ───
+  async function addFile(file, path) {
+    if (files.some((f) => f.path === path)) return;
+
+    if (!isAccepted(file.name)) {
+      skipped.push(path + ' (type not accepted)');
+      return;
+    }
+    if (file.size > MAX_FILE_BYTES) {
+      skipped.push(path + ' (over ' + formatBytes(MAX_FILE_BYTES) + ')');
+      return;
+    }
+
+    let text;
+    try {
+      text = await file.text();
+    } catch (e) {
+      skipped.push(path + ' (unreadable)');
+      return;
+    }
+
+    if (looksBinary(text)) {
+      skipped.push(path + ' (binary)');
+      return;
+    }
+
+    // Normalise line endings so line counts and the empty-line
+    // filter behave identically regardless of source platform.
+    text = text.replace(/\r\n?/g, '\n');
+
+    const lines = text.length === 0 ? 0 : text.split('\n').length;
+
+    files.push({
+      path,
+      name: file.name,
+      ext: extOf(file.name),
+      size: file.size,
+      text,
+      lines
+    });
+
+    queueRender();
+  }
+
+  // DirectoryReader.readEntries() yields at most ~100 entries per call
+  // and signals completion with an empty array. Stopping after the
+  // first batch silently loses files in large folders.
+  function readAllEntries(reader) {
+    return new Promise((resolve, reject) => {
+      const out = [];
+      const next = () => {
+        reader.readEntries((batch) => {
+          if (!batch.length) return resolve(out);
+          out.push.apply(out, batch);
+          next();
+        }, reject);
+      };
+      next();
+    });
+  }
+
+  function fileFromEntry(entry) {
+    return new Promise((resolve, reject) => entry.file(resolve, reject));
+  }
+
+  async function walkEntry(entry, prefix) {
+    if (entry.isFile) {
+      let file;
+      try { file = await fileFromEntry(entry); } catch { return; }
+      await addFile(file, prefix + entry.name);
+    } else if (entry.isDirectory) {
+      let kids;
+      try { kids = await readAllEntries(entry.createReader()); } catch { return; }
+      const nextPrefix = prefix + entry.name + '/';
+      for (const kid of kids) await walkEntry(kid, nextPrefix);
+    }
+  }
+
+  // FileSystemDirectoryHandle.entries() — Chromium's picker path.
+  async function walkDirHandle(dir, prefix) {
+    for await (const entry of dir.entries()) {
+      const name = entry[0];
+      const handle = entry[1];
+      if (handle.kind === 'directory') {
+        await walkDirHandle(handle, prefix + name + '/');
+      } else {
+        let file;
+        try { file = await handle.getFile(); } catch { continue; }
+        await addFile(file, prefix + name);
+      }
+    }
+  }
+
+  async function handleFileList(list) {
+    for (const file of list) {
+      // webkitRelativePath includes the chosen root folder name; drop
+      // it so paths match what showDirectoryPicker() produces.
+      const rel = file.webkitRelativePath || '';
+      const path = rel
+        ? rel.split('/').slice(1).join('/') || file.name
+        : file.name;
+      await addFile(file, path);
+    }
+  }
+
+  async function handleDrop(dt) {
+    const items = dt.items;
+    const supportsEntries =
+      items && items.length && typeof items[0].webkitGetAsEntry === 'function';
+
+    if (!supportsEntries) {
+      await handleFileList(dt.files);
+      return;
+    }
+
+    const roots = [];
+    for (let i = 0; i < items.length; i++) {
+      if (items[i].kind !== 'file') continue;
+      const entry = items[i].webkitGetAsEntry();
+      if (entry) roots.push(entry);
+    }
+    for (const entry of roots) await walkEntry(entry, '');
+  }
+
+  // ─── Output construction ───
+  function sortedFiles() {
+    const mode = optSort.value;
+    const copy = files.slice();
+    if (mode === 'path') {
+      copy.sort((a, b) => a.path.localeCompare(b.path));
+    } else if (mode === 'name') {
+      copy.sort((a, b) => a.name.localeCompare(b.name) || a.path.localeCompare(b.path));
+    } else if (mode === 'size-desc') {
+      copy.sort((a, b) => b.size - a.size);
+    } else if (mode === 'size-asc') {
+      copy.sort((a, b) => a.size - b.size);
+    }
+    return copy;
+  }
+
+  function stripEmptyLines(text) {
+    return text.split('\n').filter((line) => line.trim() !== '').join('\n');
+  }
+
+  // Timestamp is rendered in local time — matching what the user
+  // sees on the wall clock beats matching ISO 8601 for a personal tool.
+  function stampNow() {
+    const d = new Date();
+    const p = (x) => String(x).padStart(2, '0');
+    return d.getFullYear() + '-' + p(d.getMonth() + 1) + '-' + p(d.getDate()) +
+           ' ' + p(d.getHours()) + ':' + p(d.getMinutes()) + ':' + p(d.getSeconds());
+  }
+
+  function buildDocumentHeader() {
+    let sourceBytes = 0;
+    for (const f of files) sourceBytes += f.size;
+    const sortLabel = optSort.selectedOptions[0]
+      ? optSort.selectedOptions[0].textContent
+      : optSort.value;
+
+    const row = (label, value) => padRight(label + ':', 15) + value + '\n';
+    return RULE + '\n' +
+           'COMBINED DOCUMENTS\n' +
+           RULE + '\n' +
+           row('Generated', stampNow()) +
+           row('Files', String(files.length)) +
+           row('Source size', formatBytes(sourceBytes)) +
+           row('Empty lines', optStripEmpty.checked ? 'removed' : 'kept') +
+           row('Sort order', sortLabel) +
+           RULE + '\n\n';
+  }
+
+  function buildHeader(index, total, file) {
+    let h = RULE + '\n';
+    h += 'FILE ' + index + '/' + total + ' — ' + file.name + '\n';
+    h += 'size: ' + formatBytes(file.size) +
+         ' · type: ' + (file.ext || '—') +
+         ' · lines: ' + file.lines.toLocaleString() + '\n';
+    if (optIncludePath.checked) h += 'path: ' + file.path + '\n';
+    h += RULE + '\n';
+    return h;
+  }
+
+  function buildOutput() {
+    const list = sortedFiles();
+    if (!list.length) return '';
+    const parts = [];
+    list.forEach((file, i) => {
+      let body = file.text;
+      if (optStripEmpty.checked) body = stripEmptyLines(body);
+      parts.push(buildHeader(i + 1, list.length, file) + body);
+    });
+    // Single newline between blocks; each block already carries the
+    // source file's own trailing newline (or not).
+    return buildDocumentHeader() + parts.join('\n');
+  }
+
+  // One file rendered exactly as it will appear in the output, so the
+  // preview and the downloaded file cannot disagree.
+  function buildFilePreview(file) {
+    const list = sortedFiles();
+    const i = list.indexOf(file);
+    let body = file.text;
+    if (optStripEmpty.checked) body = stripEmptyLines(body);
+    return buildHeader(i + 1, list.length, file) + body;
+  }
+
+  function computeStats(output) {
+    const lines = output.length === 0 ? 0 : output.split('\n').length;
+    const size = new Blob([output]).size;
+    let sourceBytes = 0;
+    for (const f of files) sourceBytes += f.size;
+    return { lines, size, sourceBytes };
+  }
+
+  // ─── Rendering ───
+  function queueRender() {
+    if (renderQueued) return;
+    renderQueued = true;
+    requestAnimationFrame(() => {
+      renderQueued = false;
+      render();
+    });
+  }
+
+  function renderPreview(text) {
+    if (!text) {
+      preview.textContent = 'No files collected yet.';
+      preview.classList.add('preview-empty');
+      return;
+    }
+    preview.classList.remove('preview-empty');
+    if (text.length > PREVIEW_CHARS) {
+      preview.textContent =
+        text.slice(0, PREVIEW_CHARS) + '\n\n… [' +
+        (text.length - PREVIEW_CHARS).toLocaleString() + ' more characters]';
+    } else {
+      preview.textContent = text;
+    }
+  }
+
+  function render() {
+    totalsPanel.classList.toggle('open', optShowTotals.checked);
+
+    if (optShowTotals.checked) {
+      const output = files.length ? buildOutput() : '';
+      const stats = computeStats(output);
+      statFiles.textContent = String(files.length);
+      statLines.textContent = stats.lines.toLocaleString();
+      statSize.textContent = formatBytes(stats.size);
+      statSource.textContent = formatBytes(stats.sourceBytes);
+
+      const file = previewingPath
+        ? files.find((f) => f.path === previewingPath)
+        : null;
+
+      if (file) {
+        previewTitle.textContent = 'Preview — ' + file.path;
+        previewTitle.title = file.path;
+        previewBack.hidden = false;
+        renderPreview(buildFilePreview(file));
+      } else {
+        // A stale previewingPath can survive a removal — drop it.
+        previewingPath = null;
+        previewTitle.textContent = 'Preview — Combined output';
+        previewTitle.title = '';
+        previewBack.hidden = true;
+        renderPreview(output);
+      }
+    }
+
+    // File list
+    fileList.innerHTML = '';
+    if (!files.length) {
+      const empty = document.createElement('div');
+      empty.className = 'empty-list';
+      empty.textContent = 'No files yet — add files or drop a folder above.';
+      fileList.appendChild(empty);
+    } else {
+      const list = sortedFiles();
+      list.forEach((file) => {
+        const row = document.createElement('div');
+        row.className = 'file-row';
+        row.dataset.path = file.path;
+        row.setAttribute('role', 'button');
+        row.setAttribute('tabindex', '0');
+        row.setAttribute('aria-label', 'Preview ' + file.path);
+        if (file.path === previewingPath) row.classList.add('active');
+
+        const idx = document.createElement('span');
+        idx.className = 'idx';
+        idx.textContent = String(files.indexOf(file) + 1);
+
+        const icon = document.createElement('span');
+        icon.className = 'file-icon';
+        icon.textContent = iconFor(file.ext);
+        icon.setAttribute('aria-hidden', 'true');
+
+        const meta = document.createElement('div');
+        meta.className = 'meta';
+
+        const nameLine = document.createElement('div');
+        nameLine.className = 'fname-line';
+
+        const fname = document.createElement('span');
+        fname.className = 'fname';
+        fname.textContent = file.name;
+        fname.title = file.name;
+        nameLine.appendChild(fname);
+
+        if (file.ext) {
+          const badge = document.createElement('span');
+          badge.className = 'badge-ext';
+          badge.textContent = file.ext;
+          nameLine.appendChild(badge);
+        }
+
+        const fpath = document.createElement('div');
+        fpath.className = 'fpath';
+        fpath.textContent = file.path;
+        fpath.title = file.path;
+
+        meta.appendChild(nameLine);
+        meta.appendChild(fpath);
+
+        const figures = document.createElement('span');
+        figures.className = 'figures';
+        figures.textContent = file.lines.toLocaleString() + ' ln · ' + formatBytes(file.size);
+
+        const remove = document.createElement('button');
+        remove.type = 'button';
+        remove.className = 'remove';
+        remove.textContent = '✕';
+        remove.title = 'Remove from collection';
+        remove.dataset.path = file.path;
+        remove.setAttribute('aria-label', 'Remove ' + file.name);
+
+        row.appendChild(idx);
+        row.appendChild(icon);
+        row.appendChild(meta);
+        row.appendChild(figures);
+        row.appendChild(remove);
+        fileList.appendChild(row);
+      });
+    }
+
+    clearBtn.disabled = files.length === 0;
+    downloadBtn.disabled = files.length === 0;
+  }
+
+  // ─── Events ───
+  addFilesBtn.addEventListener('click', (e) => {
+    e.stopPropagation();
+    fileInput.click();
+  });
+
+  addFolderBtn.addEventListener('click', async (e) => {
+    e.stopPropagation();
+    if (typeof window.showDirectoryPicker === 'function') {
+      try {
+        const dir = await window.showDirectoryPicker();
+        await collect(async () => walkDirHandle(dir, ''));
+      } catch (err) {
+        if (err && err.name === 'AbortError') return;
+        setStatus('Could not open that folder: ' + err.message, 'err');
+      }
+    } else {
+      dirInput.click();
+    }
+  });
+
+  uploadZone.addEventListener('click', () => fileInput.click());
+
+  fileInput.addEventListener('change', () => {
+    const list = fileInput.files;
+    if (!list || !list.length) return;
+    collect(() => handleFileList(list)).then(() => { fileInput.value = ''; });
+  });
+
+  dirInput.addEventListener('change', () => {
+    const list = dirInput.files;
+    if (!list || !list.length) return;
+    collect(() => handleFileList(list)).then(() => { dirInput.value = ''; });
+  });
+
+  uploadZone.addEventListener('dragover', (e) => {
+    e.preventDefault();
+    uploadZone.classList.add('dragover');
+  });
+  uploadZone.addEventListener('dragleave', (e) => {
+    e.preventDefault();
+    uploadZone.classList.remove('dragover');
+  });
+  uploadZone.addEventListener('drop', (e) => {
+    e.preventDefault();
+    uploadZone.classList.remove('dragover');
+    if (!e.dataTransfer) return;
+    collect(() => handleDrop(e.dataTransfer));
+  });
+
+  async function collect(work) {
+    if (busy) return;
+    busy = true;
+    skipped.length = 0;
+    const before = files.length;
+    setStatus('Reading…');
+    try {
+      await work();
+    } catch (err) {
+      console.error(err);
+      setStatus('Something went wrong while reading: ' + err.message, 'err');
+      busy = false;
+      return;
+    }
+    const added = files.length - before;
+    render();
+    reportCollection(added);
+    busy = false;
+  }
+
+  function reportCollection(added) {
+    const parts = [];
+    if (added) parts.push('Added ' + added + ' file' + (added === 1 ? '' : 's') + '.');
+    else if (!skipped.length) parts.push('Nothing new to add.');
+    if (skipped.length) {
+      const head = skipped.slice(0, 3).join(', ');
+      parts.push('Skipped ' + skipped.length + ': ' + head +
+                 (skipped.length > 3 ? '…' : ''));
+    }
+    setStatus(parts.join(' '), skipped.length ? 'warn' : (added ? 'ok' : ''));
+  }
+
+  // Single delegated handler: remove button wins, otherwise the row
+  // toggles the preview mode for that file.
+  fileList.addEventListener('click', (e) => {
+    const removeBtn = e.target.closest('.remove');
+    if (removeBtn) {
+      const path = removeBtn.dataset.path;
+      const i = files.findIndex((f) => f.path === path);
+      if (i === -1) return;
+      files.splice(i, 1);
+      if (previewingPath === path) previewingPath = null;
+      render();
+      setStatus('Removed ' + path + '.');
+      return;
+    }
+
+    const row = e.target.closest('.file-row');
+    if (!row) return;
+    const path = row.dataset.path;
+    if (!path) return;
+
+    previewingPath = previewingPath === path ? null : path;
+    if (previewingPath && !optShowTotals.checked) {
+      optShowTotals.checked = true;
+    }
+    render();
+  });
+
+  // Keyboard equivalent for the row-as-button.
+  fileList.addEventListener('keydown', (e) => {
+    if (e.key !== 'Enter' && e.key !== ' ') return;
+    const row = e.target.closest('.file-row');
+    if (!row) return;
+    e.preventDefault();
+    row.click();
+  });
+
+  previewBack.addEventListener('click', () => {
+    previewingPath = null;
+    render();
+  });
+
+  clearBtn.addEventListener('click', () => {
+    if (!files.length) return;
+    files.length = 0;
+    skipped.length = 0;
+    previewingPath = null;
+    render();
+    setStatus('Collection cleared.');
+  });
+
+  [optStripEmpty, optIncludePath, optShowTotals].forEach((el) => {
+    el.addEventListener('change', render);
+  });
+  optSort.addEventListener('change', render);
+
+  // Re-filtering already-collected files when the type toggle flips is
+  // more surprising than helpful — new files simply follow the new rule.
+  optAcceptAll.addEventListener('change', render);
+
+  downloadBtn.addEventListener('click', () => {
+    if (!files.length) return;
+    try {
+      const output = buildOutput();
+      const blob = new Blob([output], { type: 'text/plain;charset=utf-8' });
+      let name = optFilename.value.trim() || defaultFilename();
+      if (!/\.[a-z0-9]+$/i.test(name)) name += '.txt';
+
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = name;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      setTimeout(() => URL.revokeObjectURL(url), 2000);
+
+      const stats = computeStats(output);
+      setStatus('Downloaded ' + name + ' — ' + formatBytes(stats.size) +
+                ', ' + stats.lines.toLocaleString() + ' lines.', 'ok');
+    } catch (err) {
+      console.error(err);
+      setStatus('Could not build the file: ' + err.message, 'err');
+    }
+  });
+
+  // ─── Boot ───
+  optFilename.value = defaultFilename();
+  render();
+  console.log('🗂️ Document Collector ready.');
+})();
+</script>
+</body>
+</html>

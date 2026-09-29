@@ -1,0 +1,1265 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="icon" href="data:,">
+<title>Voice Recorder · Voice Studio</title>
+<style>
+:root {
+  color-scheme: dark;
+  --bg: #0f172a;
+  --surface: #334155;
+  --surface-2: #3b4a60;
+  --border: #3f4d63;
+  --text: #e2e8f0;
+  --muted: #94a3b8;
+  --accent: #38bdf8;
+  --accent-hover: #7dd3fc;
+  --danger: #f87171;
+  --ok: #4ade80;
+  --warn: #fbbf24;
+}
+* { box-sizing: border-box; }
+body {
+  margin: 0;
+  min-height: 100vh;
+  padding: 2rem 1rem;
+  display: flex;
+  justify-content: center;
+  align-items: flex-start;
+  font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  color: var(--text);
+  background:
+    radial-gradient(900px 500px at 50% -10%, #1e293b, transparent 70%),
+    var(--bg);
+}
+.app {
+  width: 100%;
+  max-width: 900px;
+  background: rgba(30, 41, 59, .72);
+  border: 1px solid var(--border);
+  border-radius: 18px;
+  padding: 1.75rem;
+  box-shadow: 0 24px 60px rgba(0, 0, 0, .45);
+  backdrop-filter: blur(10px);
+}
+.crumbs {
+  display: flex; flex-wrap: wrap; gap: .4rem; align-items: center;
+  font-size: .8rem; color: var(--muted); margin-bottom: 1rem;
+}
+.crumbs a { color: var(--muted); text-decoration: none; transition: color .15s; }
+.crumbs a:hover { color: var(--accent); }
+.crumbs .current { color: var(--text); }
+h1 { margin: 0 0 .3rem; font-size: 1.45rem; letter-spacing: -.02em; }
+.subtitle { margin: 0 0 1.25rem; font-size: .88rem; color: var(--muted); }
+
+/* ---- setup panel ---- */
+.setup {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: .75rem;
+  padding: 2rem 1rem;
+  background: rgba(15, 23, 42, .4);
+  border: 1px dashed var(--border);
+  border-radius: 12px;
+  text-align: center;
+}
+.setup .icon { font-size: 2.5rem; }
+.setup .msg { font-size: .88rem; color: var(--muted); max-width: 420px; line-height: 1.5; }
+.setup .err { color: var(--danger); }
+
+/* ---- buttons ---- */
+.btn {
+  font: inherit;
+  font-size: .85rem;
+  font-weight: 600;
+  padding: .5rem .95rem;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--text);
+  cursor: pointer;
+  transition: background .15s, border-color .15s, color .15s, transform .06s;
+  display: inline-flex;
+  align-items: center;
+  gap: .35rem;
+  white-space: nowrap;
+}
+.btn:hover:not(:disabled) {
+  background: var(--surface-2);
+  border-color: var(--accent);
+  color: var(--accent);
+}
+.btn:active:not(:disabled) { transform: translateY(1px); }
+.btn:disabled { opacity: .35; cursor: not-allowed; }
+.btn.primary {
+  background: var(--accent);
+  color: #06263a;
+  border-color: var(--accent);
+}
+.btn.primary:hover:not(:disabled) {
+  background: var(--accent-hover);
+  color: #06263a;
+  border-color: var(--accent-hover);
+}
+.btn.danger { color: var(--danger); }
+.btn.danger:hover:not(:disabled) { border-color: var(--danger); }
+.btn.record {
+  font-size: 1rem;
+  padding: .7rem 1.4rem;
+  background: #b91c1c;
+  color: #fff;
+  border-color: #b91c1c;
+}
+.btn.record:hover:not(:disabled) { background: #dc2626; border-color: #dc2626; color: #fff; }
+.btn.record.recording {
+  background: #dc2626;
+  animation: pulse 1.4s infinite;
+}
+@keyframes pulse {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(220, 38, 38, .6); }
+  50%      { box-shadow: 0 0 0 10px rgba(220, 38, 38, 0); }
+}
+
+/* ---- visualisation ---- */
+.viz {
+  display: flex;
+  flex-direction: column;
+  gap: .5rem;
+  margin-bottom: .9rem;
+}
+.viz-box {
+  position: relative;
+  background: #050510;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  overflow: hidden;
+}
+.viz-box.pitch  { height: 170px; }
+.viz-box.wave   { height: 90px; }
+.viz-box canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
+
+/* ---- status bar ---- */
+.status-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: .75rem;
+  padding: .6rem .8rem;
+  background: rgba(15, 23, 42, .5);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  margin-bottom: .9rem;
+  font-size: .85rem;
+}
+.status-bar .spacer { flex: 1; }
+.pitch-readout {
+  font-variant-numeric: tabular-nums;
+  font-weight: 600;
+  min-width: 130px;
+}
+.pitch-readout .note { color: var(--muted); font-weight: 400; margin-left: .35rem; }
+.pitch-readout.in   { color: var(--ok); }
+.pitch-readout.out  { color: var(--danger); }
+.pitch-readout.idle { color: var(--muted); }
+
+.meter {
+  width: 120px;
+  height: 10px;
+  background: #1e293b;
+  border-radius: 5px;
+  overflow: hidden;
+  position: relative;
+}
+.meter-fill {
+  height: 100%;
+  width: 0%;
+  background: linear-gradient(90deg, var(--ok) 0%, var(--warn) 70%, var(--danger) 100%);
+  transition: width .05s linear;
+}
+
+.gate-chip {
+  font-size: .75rem;
+  font-weight: 700;
+  letter-spacing: .05em;
+  padding: .18rem .55rem;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  color: var(--muted);
+  background: transparent;
+}
+.gate-chip.open {
+  color: var(--ok);
+  border-color: var(--ok);
+  background: rgba(74, 222, 128, .12);
+}
+.gate-chip.closed {
+  color: var(--danger);
+  border-color: var(--danger);
+  background: rgba(248, 113, 113, .08);
+}
+
+/* ---- controls ---- */
+.panel {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: .6rem .9rem;
+  padding: .9rem 1rem;
+  background: rgba(15, 23, 42, .4);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  margin-bottom: .9rem;
+}
+@media (max-width: 640px) {
+  .panel { grid-template-columns: 1fr; }
+}
+.panel.full { grid-template-columns: 1fr; }
+
+.ctrl { display: flex; flex-direction: column; gap: .3rem; min-width: 0; }
+.ctrl label {
+  font-size: .7rem;
+  font-weight: 700;
+  letter-spacing: .07em;
+  text-transform: uppercase;
+  color: var(--muted);
+  display: flex;
+  justify-content: space-between;
+  gap: .5rem;
+}
+.ctrl label .val { color: var(--accent); font-weight: 600; letter-spacing: 0; text-transform: none; font-variant-numeric: tabular-nums; }
+
+.ctrl select,
+.ctrl input[type="range"] {
+  width: 100%;
+  font: inherit;
+  font-size: .85rem;
+  color: var(--text);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+}
+.ctrl select {
+  padding: .45rem .6rem;
+  cursor: pointer;
+  appearance: none;
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'><path d='M2.5 4.5 6 8l3.5-3.5' fill='none' stroke='%2394a3b8' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'/></svg>");
+  background-repeat: no-repeat;
+  background-position: right .6rem center;
+  padding-right: 1.9rem;
+}
+.ctrl input[type="range"] {
+  -webkit-appearance: none;
+  height: 6px;
+  padding: 0;
+  background: #1e293b;
+  cursor: pointer;
+}
+.ctrl input[type="range"]::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 16px; height: 16px;
+  border-radius: 50%;
+  background: var(--accent);
+  border: 2px solid var(--bg);
+  cursor: pointer;
+}
+.ctrl input[type="range"]::-moz-range-thumb {
+  width: 14px; height: 14px;
+  border-radius: 50%;
+  background: var(--accent);
+  border: 2px solid var(--bg);
+  cursor: pointer;
+}
+.ctrl input[type="range"]:disabled { opacity: .4; cursor: not-allowed; }
+
+/* ---- record panel ---- */
+.record-panel {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  padding: .9rem 1rem;
+  background: rgba(15, 23, 42, .4);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  margin-bottom: .9rem;
+}
+.timer {
+  font-variant-numeric: tabular-nums;
+  font-size: 1.2rem;
+  font-weight: 600;
+  letter-spacing: .02em;
+  color: var(--muted);
+}
+.timer.recording { color: var(--danger); }
+
+/* ---- playback ---- */
+.playback {
+  padding: .9rem 1rem;
+  background: rgba(15, 23, 42, .4);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  margin-bottom: .9rem;
+}
+.playback audio { width: 100%; margin-bottom: .7rem; border-radius: 8px; }
+.playback-actions { display: flex; flex-wrap: wrap; gap: .5rem; align-items: center; }
+.playback-info { font-size: .78rem; color: var(--muted); margin-left: auto; font-variant-numeric: tabular-nums; }
+
+.status {
+  margin-top: .5rem;
+  font-size: .82rem;
+  color: var(--muted);
+  min-height: 1.2em;
+}
+.status.ok { color: var(--ok); }
+.status.err { color: var(--danger); }
+
+.advanced-toggle {
+  display: flex;
+  align-items: center;
+  gap: .5rem;
+  font-size: .8rem;
+  color: var(--muted);
+  cursor: pointer;
+  user-select: none;
+  margin-bottom: .6rem;
+}
+.advanced-toggle:hover { color: var(--accent); }
+.advanced-panel { display: none; }
+.advanced-panel.open { display: grid; }
+.advanced-panel .checkbox {
+  display: flex;
+  align-items: center;
+  gap: .5rem;
+  font-size: .82rem;
+}
+.advanced-panel .checkbox input { accent-color: var(--accent); }
+
+.back-link {
+  display: inline-block;
+  margin-top: 1.25rem;
+  font-size: .88rem;
+  color: var(--accent);
+  text-decoration: none;
+}
+.back-link:hover { text-decoration: underline; }
+</style>
+</head>
+<body>
+<main class="app">
+  <nav class="crumbs">
+    <a href="index.html">Documents Manager</a>
+    <span>/</span>
+    <a href="dm_voiceStudio.html">Voice Studio</a>
+    <span>/</span>
+    <span class="current">Voice Recorder</span>
+  </nav>
+  <h1>Voice Recorder</h1>
+  <p class="subtitle">Record from your mic with a pitch gate — capture only the voices inside a target range, ignore everything else, in real time.</p>
+
+  <!-- Setup / permission -->
+  <div class="setup" id="setup">
+    <div class="icon">🎤</div>
+    <div class="msg" id="setupMsg">Click below to grant microphone access. Everything runs locally — no audio is uploaded.</div>
+    <button class="btn primary" id="enableBtn">Enable Microphone</button>
+  </div>
+
+  <!-- Main studio -->
+  <div id="studio" style="display:none">
+
+    <div class="viz">
+      <div class="viz-box pitch"><canvas id="pitchCanvas"></canvas></div>
+      <div class="viz-box wave"><canvas id="waveCanvas"></canvas></div>
+    </div>
+
+    <div class="status-bar">
+      <span class="pitch-readout idle" id="pitchReadout">— Hz</span>
+      <div class="meter"><div class="meter-fill" id="meterFill"></div></div>
+      <span id="dbReadout" style="font-variant-numeric:tabular-nums;color:var(--muted);min-width:70px;">— dB</span>
+      <span class="spacer"></span>
+      <span class="gate-chip" id="gateChip">GATE: —</span>
+    </div>
+
+    <div class="panel">
+      <div class="ctrl">
+        <label for="filterMode">Filter Mode</label>
+        <select id="filterMode">
+          <option value="in">Record only voices IN range</option>
+          <option value="out">Record only voices OUT of range</option>
+          <option value="off">Filter off — record everything</option>
+        </select>
+      </div>
+      <div class="ctrl">
+        <label for="presetSel">Preset</label>
+        <select id="presetSel">
+          <option value="all">All voices (70 – 1200 Hz)</option>
+          <option value="bass">Bass — male low (70 – 150 Hz)</option>
+          <option value="baritone">Baritone — male mid (90 – 180 Hz)</option>
+          <option value="tenor">Tenor — male high (130 – 260 Hz)</option>
+          <option value="alto">Alto — female low (175 – 350 Hz)</option>
+          <option value="mezzo">Mezzo — female mid (220 – 440 Hz)</option>
+          <option value="soprano">Soprano — female high (260 – 600 Hz)</option>
+          <option value="child">Child / high voice (300 – 1200 Hz)</option>
+          <option value="custom">Custom…</option>
+        </select>
+      </div>
+
+      <div class="ctrl">
+        <label>Min pitch <span class="val" id="minPitchVal">70 Hz</span></label>
+        <input type="range" id="minPitch" min="0" max="1000" value="15">
+      </div>
+      <div class="ctrl">
+        <label>Max pitch <span class="val" id="maxPitchVal">1200 Hz</span></label>
+        <input type="range" id="maxPitch" min="0" max="1000" value="920">
+      </div>
+
+      <div class="ctrl">
+        <label>Volume gate <span class="val" id="volGateVal">-50 dB</span></label>
+        <input type="range" id="volGate" min="-70" max="0" step="1" value="-50">
+      </div>
+      <div class="ctrl">
+        <label>Monitor <span class="val" id="monitorVal">Off</span></label>
+        <select id="monitorSel">
+          <option value="off">Off</option>
+          <option value="gated">Gated (hear what's recorded)</option>
+          <option value="raw">Raw (hear yourself)</option>
+        </select>
+      </div>
+    </div>
+
+    <div class="advanced-toggle" id="advToggle">▸ Advanced microphone options</div>
+    <div class="panel full advanced-panel" id="advPanel">
+      <div class="ctrl">
+        <label for="deviceSel">Input device</label>
+        <select id="deviceSel"></select>
+      </div>
+      <div class="checkbox">
+        <input type="checkbox" id="echoCancel" checked>
+        <label for="echoCancel">Echo cancellation</label>
+      </div>
+      <div class="checkbox">
+        <input type="checkbox" id="noiseSuppress" checked>
+        <label for="noiseSuppress">Noise suppression</label>
+      </div>
+      <div class="checkbox">
+        <input type="checkbox" id="autoGain" checked>
+        <label for="autoGain">Auto gain control</label>
+      </div>
+    </div>
+
+    <div class="record-panel">
+      <button class="btn record" id="recordBtn">● Record</button>
+      <span class="timer" id="timer">00:00.0</span>
+      <span class="spacer" style="flex:1"></span>
+      <button class="btn danger" id="disableBtn">Disable mic</button>
+    </div>
+
+    <div class="playback" id="playback" style="display:none">
+      <audio id="player" controls></audio>
+      <div class="playback-actions">
+        <button class="btn primary" id="downloadBtn">⬇ Download WAV</button>
+        <a class="btn" id="sendEditorBtn" href="dm_voiceStudio_AE.html" target="_blank" rel="noopener">✂ Open Editor in new tab →</a>
+        <span class="playback-info" id="playbackInfo"></span>
+      </div>
+    </div>
+
+    <div class="status" id="status"></div>
+  </div>
+
+  <a href="dm_voiceStudio.html" class="back-link">← Back to Voice Studio</a>
+</main>
+
+<script>
+(function () {
+  'use strict';
+
+  // ─── Constants ───
+  const MIN_DETECT = 60;
+  const MAX_DETECT = 1500;
+  const FFT_SIZE = 2048;
+  const DETECT_INTERVAL = 33;      // ms (~30 Hz)
+  const HISTORY_LEN = 180;         // ~6 s of pitch samples
+  const MIN_SLIDER = 0;
+  const MAX_SLIDER = 1000;
+
+  // ─── State ───
+  let audioCtx = null;
+  let micStream = null;
+  let sourceNode = null;
+  let hpFilter = null;
+  let analyser = null;
+  let gateGain = null;
+  let monitorGain = null;
+  let recDest = null;
+
+  let mediaRecorder = null;
+  let recordedChunks = [];
+  let isRecording = false;
+  let recordStartCtx = 0;
+
+  let detectionTimer = null;
+  let renderRaf = null;
+
+  // Detection state
+  const detectBuffer = new Float32Array(FFT_SIZE);
+  const pitchHistory = [];         // { freq, inRange, gateOpen }
+  let currentPitch = -1;
+  let currentDb = -Infinity;
+  let gateOpen = false;
+
+  // Settings
+  let filterMode = 'in';
+  let minPitch = 70;
+  let maxPitch = 1200;
+  let volGateDb = -50;
+  let monitorMode = 'off';
+  const attackMs = 12;
+  const releaseMs = 120;
+
+  // Post-recording blob
+  let lastWavBlob = null;
+  let lastWebmBlob = null;
+
+  // ─── DOM ───
+  const $ = (id) => document.getElementById(id);
+  const setup = $('setup');
+  const setupMsg = $('setupMsg');
+  const enableBtn = $('enableBtn');
+  const studio = $('studio');
+  const pitchCanvas = $('pitchCanvas');
+  const waveCanvas = $('waveCanvas');
+  const pitchCtx = pitchCanvas.getContext('2d');
+  const waveCtx = waveCanvas.getContext('2d');
+  const pitchReadout = $('pitchReadout');
+  const meterFill = $('meterFill');
+  const dbReadout = $('dbReadout');
+  const gateChip = $('gateChip');
+  const filterModeSel = $('filterMode');
+  const presetSel = $('presetSel');
+  const minPitchSlider = $('minPitch');
+  const maxPitchSlider = $('maxPitch');
+  const minPitchVal = $('minPitchVal');
+  const maxPitchVal = $('maxPitchVal');
+  const volGateSlider = $('volGate');
+  const volGateVal = $('volGateVal');
+  const monitorSel = $('monitorSel');
+  const monitorVal = $('monitorVal');
+  const advToggle = $('advToggle');
+  const advPanel = $('advPanel');
+  const deviceSel = $('deviceSel');
+  const echoCancelCb = $('echoCancel');
+  const noiseSuppressCb = $('noiseSuppress');
+  const autoGainCb = $('autoGain');
+  const recordBtn = $('recordBtn');
+  const timerEl = $('timer');
+  const disableBtn = $('disableBtn');
+  const playback = $('playback');
+  const player = $('player');
+  const downloadBtn = $('downloadBtn');
+  const playbackInfo = $('playbackInfo');
+  const statusEl = $('status');
+
+  // ─── Helpers ───
+  function setStatus(msg, kind) {
+    statusEl.textContent = msg || '';
+    statusEl.className = 'status' + (kind ? ' ' + kind : '');
+  }
+
+  function formatDuration(ms) {
+    const total = Math.max(0, ms);
+    const s = Math.floor(total / 1000);
+    const m = Math.floor(s / 60);
+    const sec = s % 60;
+    const tenth = Math.floor((total % 1000) / 100);
+    return String(m).padStart(2, '0') + ':' +
+           String(sec).padStart(2, '0') + '.' + tenth;
+  }
+
+  // Log-scaled frequency mapping: slider 0..1000 <-> 60..1500 Hz
+  function sliderToFreq(v) {
+    return MIN_DETECT * Math.pow(MAX_DETECT / MIN_DETECT, v / MAX_SLIDER);
+  }
+  function freqToSlider(f) {
+    f = Math.max(MIN_DETECT, Math.min(MAX_DETECT, f));
+    return Math.round(MAX_SLIDER * Math.log(f / MIN_DETECT) / Math.log(MAX_DETECT / MIN_DETECT));
+  }
+
+  const NOTES = ['C','C#','D','D#','E','F','F#','G','G#','A','A#','B'];
+  function pitchToNote(freq) {
+    if (!isFinite(freq) || freq <= 0) return '';
+    const n = Math.round(12 * Math.log2(freq / 440) + 69);
+    const name = NOTES[((n % 12) + 12) % 12];
+    const octave = Math.floor(n / 12) - 1;
+    return name + octave;
+  }
+
+  // ─── Pitch detection (autocorrelation) ───
+  function detectPitch() {
+    analyser.getFloatTimeDomainData(detectBuffer);
+
+    // RMS in dB
+    let sum = 0;
+    for (let i = 0; i < FFT_SIZE; i++) {
+      const v = detectBuffer[i];
+      sum += v * v;
+    }
+    const rms = Math.sqrt(sum / FFT_SIZE);
+    currentDb = rms > 0 ? 20 * Math.log10(rms) : -Infinity;
+
+    if (rms < 0.003) return -1;
+
+    // Normalize for autocorrelation
+    let peak = 0;
+    for (let i = 0; i < FFT_SIZE; i++) {
+      const a = Math.abs(detectBuffer[i]);
+      if (a > peak) peak = a;
+    }
+    if (peak < 0.01) return -1;
+
+    const N = 1200;
+    const buf = new Float32Array(N);
+    const inv = 1 / peak;
+    for (let i = 0; i < N; i++) buf[i] = detectBuffer[i] * inv;
+
+    const sr = audioCtx.sampleRate;
+    const minLag = Math.max(2, Math.floor(sr / MAX_DETECT));
+    const maxLag = Math.min(N - 1, Math.ceil(sr / MIN_DETECT));
+
+    let bestLag = -1;
+    let bestVal = 0;
+
+    for (let lag = minLag; lag <= maxLag; lag++) {
+      let s = 0;
+      const end = N - lag;
+      for (let i = 0; i < end; i++) s += buf[i] * buf[i + lag];
+      s /= end;
+      if (s > bestVal) { bestVal = s; bestLag = lag; }
+    }
+
+    if (bestLag < 0 || bestVal < 0.15) return -1;
+
+    // Parabolic interpolation around the peak
+    let y1 = 0, y2 = 0, y3 = 0;
+    {
+      const l = bestLag;
+      const end1 = N - (l - 1), end2 = N - l, end3 = N - (l + 1);
+      if (l > minLag) {
+        for (let i = 0; i < end1; i++) y1 += buf[i] * buf[i + l - 1];
+        y1 /= end1;
+      }
+      for (let i = 0; i < end2; i++) y2 += buf[i] * buf[i + l];
+      y2 /= end2;
+      if (l < maxLag) {
+        for (let i = 0; i < end3; i++) y3 += buf[i] * buf[i + l + 1];
+        y3 /= end3;
+      }
+    }
+    const a = (y1 + y3 - 2 * y2) / 2;
+    const b = (y3 - y1) / 2;
+    let refined = bestLag;
+    if (a !== 0) refined = bestLag - b / (2 * a);
+
+    const freq = sr / refined;
+    if (freq < MIN_DETECT || freq > MAX_DETECT) return -1;
+    return freq;
+  }
+
+  function inPitchRange(f) {
+    return f >= minPitch && f <= maxPitch;
+  }
+
+  function updateGate(freq) {
+    const voicePresent = freq > 0 && currentDb >= volGateDb;
+
+    let shouldOpen;
+    if (filterMode === 'off') {
+      shouldOpen = voicePresent;
+    } else if (filterMode === 'in') {
+      shouldOpen = voicePresent && inPitchRange(freq);
+    } else {
+      // 'out' — capture only voices outside the range
+      shouldOpen = voicePresent && !inPitchRange(freq);
+    }
+
+    if (shouldOpen !== gateOpen) {
+      gateOpen = shouldOpen;
+      const now = audioCtx.currentTime;
+      const tc = (gateOpen ? attackMs : releaseMs) / 1000;
+      gateGain.gain.setTargetAtTime(gateOpen ? 1 : 0, now, tc);
+    }
+
+    pitchHistory.push({
+      freq: voicePresent ? freq : -1,
+      inRange: voicePresent ? inPitchRange(freq) : false,
+      gateOpen
+    });
+    while (pitchHistory.length > HISTORY_LEN) pitchHistory.shift();
+  }
+
+  function detectionLoop() {
+    const f = detectPitch();
+    currentPitch = f;
+    updateGate(f);
+  }
+
+  // ─── Visualisation ───
+  function fitCanvas(canvas, ctx) {
+    const dpr = window.devicePixelRatio || 1;
+    const rect = canvas.getBoundingClientRect();
+    const w = Math.max(1, Math.round(rect.width * dpr));
+    const h = Math.max(1, Math.round(rect.height * dpr));
+    if (canvas.width !== w || canvas.height !== h) {
+      canvas.width = w;
+      canvas.height = h;
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    }
+    return { w: rect.width, h: rect.height };
+  }
+
+  function freqToY(freq, h) {
+    const t = (Math.log(freq) - Math.log(MIN_DETECT)) /
+              (Math.log(MAX_DETECT) - Math.log(MIN_DETECT));
+    return h - t * h;
+  }
+
+  function drawPitchGraph() {
+    const { w, h } = fitCanvas(pitchCanvas, pitchCtx);
+    pitchCtx.clearRect(0, 0, w, h);
+    pitchCtx.fillStyle = '#050510';
+    pitchCtx.fillRect(0, 0, w, h);
+
+    // Y grid at 100 / 300 / 1000 Hz
+    pitchCtx.font = '9px ui-monospace, monospace';
+    pitchCtx.textBaseline = 'middle';
+    [80, 150, 300, 600, 1200].forEach(f => {
+      const y = freqToY(f, h);
+      pitchCtx.strokeStyle = 'rgba(255,255,255,0.05)';
+      pitchCtx.lineWidth = 1;
+      pitchCtx.beginPath();
+      pitchCtx.moveTo(0, y);
+      pitchCtx.lineTo(w, y);
+      pitchCtx.stroke();
+      pitchCtx.fillStyle = 'rgba(148,163,184,0.55)';
+      pitchCtx.fillText(f + ' Hz', 4, y);
+    });
+
+    // Shade the "passing" pitch range (or the inverse zone)
+    const yMin = freqToY(Math.min(maxPitch, MAX_DETECT), h);
+    const yMax = freqToY(Math.max(minPitch, MIN_DETECT), h);
+    if (filterMode === 'in') {
+      pitchCtx.fillStyle = 'rgba(74,222,128,0.06)';
+      pitchCtx.fillRect(0, yMin, w, yMax - yMin);
+      pitchCtx.strokeStyle = 'rgba(74,222,128,0.35)';
+      pitchCtx.lineWidth = 1;
+      pitchCtx.setLineDash([4, 4]);
+      pitchCtx.beginPath();
+      pitchCtx.moveTo(0, yMin); pitchCtx.lineTo(w, yMin);
+      pitchCtx.moveTo(0, yMax); pitchCtx.lineTo(w, yMax);
+      pitchCtx.stroke();
+      pitchCtx.setLineDash([]);
+    } else if (filterMode === 'out') {
+      pitchCtx.fillStyle = 'rgba(248,113,113,0.06)';
+      pitchCtx.fillRect(0, 0, w, yMin);
+      pitchCtx.fillRect(0, yMax, w, h - yMax);
+    }
+
+    // Pitch history as a scrolling line
+    const n = pitchHistory.length;
+    if (n < 2) return;
+    const dx = w / (HISTORY_LEN - 1);
+    const xOff = w - (n - 1) * dx;
+
+    // Split into segments by gate state so we can color them
+    let curGate = null;
+    let path = [];
+    const strokePath = () => {
+      if (path.length < 2) return;
+      pitchCtx.beginPath();
+      pitchCtx.moveTo(path[0].x, path[0].y);
+      for (let i = 1; i < path.length; i++) pitchCtx.lineTo(path[i].x, path[i].y);
+      pitchCtx.strokeStyle = curGate ? 'rgba(74,222,128,0.95)' : 'rgba(248,113,113,0.85)';
+      pitchCtx.lineWidth = 1.8;
+      pitchCtx.stroke();
+      path = [];
+    };
+
+    for (let i = 0; i < n; i++) {
+      const s = pitchHistory[i];
+      const x = xOff + i * dx;
+      if (s.freq <= 0) { strokePath(); curGate = null; continue; }
+      const y = freqToY(s.freq, h);
+      if (curGate !== s.gateOpen) { strokePath(); curGate = s.gateOpen; }
+      path.push({ x, y });
+    }
+    strokePath();
+
+    // Current pitch marker
+    if (currentPitch > 0) {
+      const x = w - 6;
+      const y = freqToY(currentPitch, h);
+      pitchCtx.fillStyle = gateOpen ? '#4ade80' : '#f87171';
+      pitchCtx.beginPath();
+      pitchCtx.arc(x, y, 4, 0, Math.PI * 2);
+      pitchCtx.fill();
+    }
+  }
+
+  function drawWave() {
+    const { w, h } = fitCanvas(waveCanvas, waveCtx);
+    waveCtx.clearRect(0, 0, w, h);
+    waveCtx.fillStyle = '#050510';
+    waveCtx.fillRect(0, 0, w, h);
+
+    analyser.getFloatTimeDomainData(detectBuffer);
+    const mid = h / 2;
+    const amp = (h / 2) * 0.9;
+    const step = FFT_SIZE / w;
+    waveCtx.beginPath();
+    for (let x = 0; x < w; x++) {
+      const i0 = Math.floor(x * step);
+      const i1 = Math.min(FFT_SIZE, Math.floor((x + 1) * step));
+      let mn = 0, mx = 0;
+      for (let i = i0; i < i1; i++) {
+        const v = detectBuffer[i];
+        if (v < mn) mn = v;
+        if (v > mx) mx = v;
+      }
+      waveCtx.moveTo(x + 0.5, mid - mx * amp);
+      waveCtx.lineTo(x + 0.5, mid - mn * amp);
+    }
+    waveCtx.strokeStyle = gateOpen ? 'rgba(74,222,128,0.8)' : 'rgba(148,163,184,0.6)';
+    waveCtx.lineWidth = 1;
+    waveCtx.stroke();
+
+    // Center line
+    waveCtx.strokeStyle = 'rgba(255,255,255,0.05)';
+    waveCtx.beginPath();
+    waveCtx.moveTo(0, mid);
+    waveCtx.lineTo(w, mid);
+    waveCtx.stroke();
+  }
+
+  function renderLoop() {
+    drawPitchGraph();
+    drawWave();
+    updateReadouts();
+    renderRaf = requestAnimationFrame(renderLoop);
+  }
+
+  function updateReadouts() {
+    // Pitch readout
+    if (currentPitch > 0) {
+      const inR = inPitchRange(currentPitch);
+      pitchReadout.textContent = Math.round(currentPitch) + ' Hz';
+      pitchReadout.innerHTML = Math.round(currentPitch) + ' Hz' +
+        '<span class="note">' + pitchToNote(currentPitch) + '</span>';
+      pitchReadout.className = 'pitch-readout ' +
+        (filterMode === 'off' ? 'in' :
+         filterMode === 'in'  ? (inR ? 'in' : 'out') :
+                                (inR ? 'out' : 'in'));
+    } else {
+      pitchReadout.textContent = '— Hz';
+      pitchReadout.className = 'pitch-readout idle';
+    }
+
+    // dB meter (map -60..0 to 0..100)
+    const pct = Math.max(0, Math.min(100, (currentDb + 60) / 60 * 100));
+    meterFill.style.width = pct + '%';
+    dbReadout.textContent = isFinite(currentDb) ? currentDb.toFixed(1) + ' dB' : '— dB';
+
+    // Gate chip
+    if (filterMode === 'off' && !gateOpen && currentPitch <= 0) {
+      gateChip.textContent = 'GATE: —';
+      gateChip.className = 'gate-chip';
+    } else {
+      gateChip.textContent = 'GATE: ' + (gateOpen ? 'OPEN' : 'CLOSED');
+      gateChip.className = 'gate-chip ' + (gateOpen ? 'open' : 'closed');
+    }
+
+    // Recording timer
+    if (isRecording) {
+      const ms = (audioCtx.currentTime - recordStartCtx) * 1000;
+      timerEl.textContent = formatDuration(ms);
+    }
+  }
+
+  // ─── Setup / teardown ───
+  async function listDevices() {
+    try {
+      const devices = await navigator.mediaDevices.enumerateDevices();
+      const inputs = devices.filter(d => d.kind === 'audioinput');
+      deviceSel.innerHTML = '';
+      inputs.forEach((d, i) => {
+        const opt = document.createElement('option');
+        opt.value = d.deviceId;
+        opt.textContent = d.label || ('Microphone ' + (i + 1));
+        deviceSel.appendChild(opt);
+      });
+      // Match current stream's device id
+      if (micStream) {
+        const track = micStream.getAudioTracks()[0];
+        if (track) {
+          const s = track.getSettings();
+          if (s.deviceId) deviceSel.value = s.deviceId;
+        }
+      }
+    } catch (e) {
+      console.warn('enumerateDevices failed:', e);
+    }
+  }
+
+  async function acquireMic() {
+    if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    if (audioCtx.state === 'suspended') await audioCtx.resume();
+
+    const constraints = {
+      audio: {
+        deviceId: deviceSel.value ? { exact: deviceSel.value } : undefined,
+        echoCancellation: echoCancelCb.checked,
+        noiseSuppression: noiseSuppressCb.checked,
+        autoGainControl: autoGainCb.checked,
+      }
+    };
+
+    const stream = await navigator.mediaDevices.getUserMedia(constraints);
+    micStream = stream;
+
+    // Tear down old graph if any
+    if (sourceNode) { try { sourceNode.disconnect(); } catch (e) {} }
+    if (hpFilter)   { try { hpFilter.disconnect(); } catch (e) {} }
+    if (analyser)   { try { analyser.disconnect(); } catch (e) {} }
+    if (gateGain)   { try { gateGain.disconnect(); } catch (e) {} }
+    if (monitorGain){ try { monitorGain.disconnect(); } catch (e) {} }
+    if (recDest)    { try { recDest.disconnect(); } catch (e) {} }
+
+    sourceNode = audioCtx.createMediaStreamSource(stream);
+
+    hpFilter = audioCtx.createBiquadFilter();
+    hpFilter.type = 'highpass';
+    hpFilter.frequency.value = 80;
+    hpFilter.Q.value = 0.7;
+
+    analyser = audioCtx.createAnalyser();
+    analyser.fftSize = FFT_SIZE;
+    analyser.smoothingTimeConstant = 0.4;
+
+    gateGain = audioCtx.createGain();
+    gateGain.gain.value = 0;
+
+    monitorGain = audioCtx.createGain();
+    monitorGain.gain.value = 0;
+
+    recDest = audioCtx.createMediaStreamDestination();
+
+    sourceNode.connect(hpFilter);
+    hpFilter.connect(analyser);
+    hpFilter.connect(gateGain);
+    hpFilter.connect(monitorGain);
+    gateGain.connect(recDest);
+    monitorGain.connect(audioCtx.destination);
+
+    applyMonitor();
+
+    if (!detectionTimer) {
+      detectionTimer = setInterval(detectionLoop, DETECT_INTERVAL);
+    }
+    if (!renderRaf) {
+      renderRaf = requestAnimationFrame(renderLoop);
+    }
+  }
+
+  function releaseMic() {
+    if (detectionTimer) { clearInterval(detectionTimer); detectionTimer = null; }
+    if (renderRaf)      { cancelAnimationFrame(renderRaf); renderRaf = null; }
+    if (micStream) {
+      micStream.getTracks().forEach(t => t.stop());
+      micStream = null;
+    }
+    try { if (sourceNode) sourceNode.disconnect(); } catch (e) {}
+    try { if (gateGain)   gateGain.disconnect(); } catch (e) {}
+    try { if (monitorGain) monitorGain.disconnect(); } catch (e) {}
+    try { if (recDest)    recDest.disconnect(); } catch (e) {}
+    sourceNode = gateGain = monitorGain = recDest = null;
+    gateOpen = false;
+    currentPitch = -1;
+    currentDb = -Infinity;
+    pitchHistory.length = 0;
+  }
+
+  function applyMonitor() {
+    if (!monitorGain) return;
+    if (monitorMode === 'off') {
+      monitorGain.gain.setTargetAtTime(0, audioCtx.currentTime, 0.05);
+    } else if (monitorMode === 'raw') {
+      monitorGain.gain.setTargetAtTime(1, audioCtx.currentTime, 0.05);
+    } else {
+      // gated: mirrored from gateGain each detection tick
+      monitorGain.gain.setTargetAtTime(gateOpen ? 1 : 0, audioCtx.currentTime, 0.05);
+    }
+  }
+
+  // ─── Recording ───
+  function pickMime() {
+    const opts = [
+      'audio/webm;codecs=opus',
+      'audio/webm',
+      'audio/ogg;codecs=opus',
+      'audio/mp4',
+    ];
+    for (const m of opts) {
+      if (window.MediaRecorder && MediaRecorder.isTypeSupported(m)) return m;
+    }
+    return '';
+  }
+
+  function startRecording() {
+    if (!recDest) return;
+    recordedChunks = [];
+    const mime = pickMime();
+    const opts = mime ? { mimeType: mime } : undefined;
+    try {
+      mediaRecorder = new MediaRecorder(recDest.stream, opts);
+    } catch (e) {
+      setStatus('Recording is not supported in this browser.', 'err');
+      return;
+    }
+    mediaRecorder.ondataavailable = (e) => {
+      if (e.data && e.data.size > 0) recordedChunks.push(e.data);
+    };
+    mediaRecorder.onstop = onRecordingStopped;
+    mediaRecorder.start(250);
+
+    isRecording = true;
+    recordStartCtx = audioCtx.currentTime;
+    recordBtn.textContent = '⏹ Stop';
+    recordBtn.classList.add('recording');
+    timerEl.classList.add('recording');
+    setStatus('Recording…', 'ok');
+  }
+
+  function stopRecording() {
+    if (!isRecording || !mediaRecorder) return;
+    try { mediaRecorder.stop(); } catch (e) {}
+    isRecording = false;
+    recordBtn.textContent = '● Record';
+    recordBtn.classList.remove('recording');
+    timerEl.classList.remove('recording');
+  }
+
+  async function onRecordingStopped() {
+    const mime = (mediaRecorder && mediaRecorder.mimeType) || 'audio/webm';
+    const blob = new Blob(recordedChunks, { type: mime });
+    recordedChunks = [];
+    if (blob.size === 0) {
+      setStatus('Nothing was recorded.', 'err');
+      return;
+    }
+    lastWebmBlob = blob;
+    setStatus('Decoding recording…');
+    try {
+      const arr = await blob.arrayBuffer();
+      const buf = await audioCtx.decodeAudioData(arr.slice(0));
+      lastWavBlob = bufferToWav(buf);
+      const url = URL.createObjectURL(lastWavBlob);
+      player.src = url;
+      playback.style.display = 'block';
+      playbackInfo.textContent = buf.duration.toFixed(2) + 's · ' +
+        (lastWavBlob.size / 1024 / 1024).toFixed(2) + ' MB · WAV';
+      setStatus('Recording ready. Play it back, or download.', 'ok');
+    } catch (e) {
+      console.error(e);
+      setStatus('Could not decode the recording.', 'err');
+    }
+  }
+
+  function bufferToWav(buffer) {
+    const numChannels = buffer.numberOfChannels;
+    const sampleRate = buffer.sampleRate;
+    const bitsPerSample = 16;
+    const blockAlign = numChannels * bitsPerSample / 8;
+    const byteRate = sampleRate * blockAlign;
+    const dataSize = buffer.length * blockAlign;
+    const bufferSize = 44 + dataSize;
+    const ab = new ArrayBuffer(bufferSize);
+    const view = new DataView(ab);
+    const writeStr = (off, str) => {
+      for (let i = 0; i < str.length; i++) view.setUint8(off + i, str.charCodeAt(i));
+    };
+    writeStr(0, 'RIFF');
+    view.setUint32(4, bufferSize - 8, true);
+    writeStr(8, 'WAVE');
+    writeStr(12, 'fmt ');
+    view.setUint32(16, 16, true);
+    view.setUint16(20, 1, true);
+    view.setUint16(22, numChannels, true);
+    view.setUint32(24, sampleRate, true);
+    view.setUint32(28, byteRate, true);
+    view.setUint16(32, blockAlign, true);
+    view.setUint16(34, bitsPerSample, true);
+    writeStr(36, 'data');
+    view.setUint32(40, dataSize, true);
+    const chans = [];
+    for (let c = 0; c < numChannels; c++) chans.push(buffer.getChannelData(c));
+    let off = 44;
+    for (let i = 0; i < buffer.length; i++) {
+      for (let c = 0; c < numChannels; c++) {
+        let s = chans[c][i];
+        s = Math.max(-1, Math.min(1, s));
+        view.setInt16(off, s < 0 ? s * 0x8000 : s * 0x7FFF, true);
+        off += 2;
+      }
+    }
+    return new Blob([ab], { type: 'audio/wav' });
+  }
+
+  // ─── Presets ───
+  const PRESETS = {
+    all:     [70, 1200],
+    bass:    [70, 150],
+    baritone:[90, 180],
+    tenor:   [130, 260],
+    alto:    [175, 350],
+    mezzo:   [220, 440],
+    soprano: [260, 600],
+    child:   [300, 1200],
+  };
+
+  function applyPreset(name) {
+    const p = PRESETS[name];
+    if (!p) return;
+    minPitch = p[0];
+    maxPitch = p[1];
+    minPitchSlider.value = freqToSlider(minPitch);
+    maxPitchSlider.value = freqToSlider(maxPitch);
+    refreshPitchLabels();
+  }
+
+  function refreshPitchLabels() {
+    minPitchVal.textContent = Math.round(minPitch) + ' Hz';
+    maxPitchVal.textContent = Math.round(maxPitch) + ' Hz';
+  }
+
+  // ─── UI wiring ───
+  enableBtn.addEventListener('click', async () => {
+    enableBtn.disabled = true;
+    setupMsg.textContent = 'Requesting microphone access…';
+    try {
+      await acquireMic();
+      await listDevices();
+      setup.style.display = 'none';
+      studio.style.display = 'block';
+      setStatus('Mic active. Speak, and the gate chip shows what would be recorded.', 'ok');
+    } catch (err) {
+      console.error(err);
+      setupMsg.textContent = 'Microphone access denied or unavailable. ' +
+        'Grant permission in your browser settings and reload.';
+      setupMsg.classList.add('err');
+      enableBtn.disabled = false;
+    }
+  });
+
+  disableBtn.addEventListener('click', () => {
+    if (isRecording) stopRecording();
+    releaseMic();
+    studio.style.display = 'none';
+    setup.style.display = 'flex';
+    setupMsg.textContent = 'Microphone released.';
+    setupMsg.classList.remove('err');
+    enableBtn.disabled = false;
+  });
+
+  filterModeSel.addEventListener('change', () => {
+    filterMode = filterModeSel.value;
+  });
+
+  presetSel.addEventListener('change', () => {
+    if (presetSel.value !== 'custom') applyPreset(presetSel.value);
+  });
+
+  minPitchSlider.addEventListener('input', () => {
+    minPitch = sliderToFreq(parseInt(minPitchSlider.value, 10));
+    if (minPitch > maxPitch - 10) {
+      maxPitch = Math.min(MAX_DETECT, minPitch + 10);
+      maxPitchSlider.value = freqToSlider(maxPitch);
+      maxPitchVal.textContent = Math.round(maxPitch) + ' Hz';
+    }
+    minPitchVal.textContent = Math.round(minPitch) + ' Hz';
+    presetSel.value = 'custom';
+  });
+
+  maxPitchSlider.addEventListener('input', () => {
+    maxPitch = sliderToFreq(parseInt(maxPitchSlider.value, 10));
+    if (maxPitch < minPitch + 10) {
+      minPitch = Math.max(MIN_DETECT, maxPitch - 10);
+      minPitchSlider.value = freqToSlider(minPitch);
+      minPitchVal.textContent = Math.round(minPitch) + ' Hz';
+    }
+    maxPitchVal.textContent = Math.round(maxPitch) + ' Hz';
+    presetSel.value = 'custom';
+  });
+
+  volGateSlider.addEventListener('input', () => {
+    volGateDb = parseInt(volGateSlider.value, 10);
+    volGateVal.textContent = volGateDb + ' dB';
+  });
+
+  monitorSel.addEventListener('change', () => {
+    monitorMode = monitorSel.value;
+    monitorVal.textContent = monitorMode === 'off' ? 'Off' :
+                             monitorMode === 'raw' ? 'Raw' : 'Gated';
+    applyMonitor();
+  });
+
+  advToggle.addEventListener('click', () => {
+    advPanel.classList.toggle('open');
+    advToggle.textContent = (advPanel.classList.contains('open') ? '▾' : '▸') +
+      ' Advanced microphone options';
+  });
+
+  deviceSel.addEventListener('change', async () => {
+    if (!micStream) return;
+    try {
+      const wasRecording = isRecording;
+      if (wasRecording) stopRecording();
+      await acquireMic();
+      if (wasRecording) startRecording();
+      setStatus('Switched to ' + (deviceSel.selectedOptions[0]?.textContent || 'device'), 'ok');
+    } catch (err) {
+      setStatus('Could not switch device: ' + err.message, 'err');
+    }
+  });
+
+  recordBtn.addEventListener('click', () => {
+    if (isRecording) stopRecording();
+    else startRecording();
+  });
+
+  downloadBtn.addEventListener('click', () => {
+    if (!lastWavBlob) return;
+    const url = URL.createObjectURL(lastWavBlob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'recording-' + Date.now() + '.wav';
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 2000);
+  });
+
+  window.addEventListener('keydown', (e) => {
+    if (studio.style.display === 'none') return;
+    const tag = (e.target.tagName || '').toLowerCase();
+    if (tag === 'input' || tag === 'select' || tag === 'textarea') return;
+    if (e.code === 'Space') { e.preventDefault(); recordBtn.click(); }
+  });
+
+  window.addEventListener('beforeunload', () => releaseMic());
+
+  // Initialise sliders to preset values
+  applyPreset('all');
+  volGateVal.textContent = volGateSlider.value + ' dB';
+  monitorVal.textContent = 'Off';
+})();
+</script>
+</body>
+</html>
